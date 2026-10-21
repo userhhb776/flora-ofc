@@ -73,9 +73,30 @@ export const defaultContent = {
   instagram: "florapurasuldeminas",
   payments: "Pix, Cartão de crédito, Cartão de débito, Dinheiro",
   colors: { primary: "", accent: "", background: "", foreground: "" },
+  reviewsEnabled: true,
+  promo: {
+    enabled: false,
+    title: "BLACK FRIDAY",
+    subtitle: "Descontos imperdíveis em toda a loja",
+    marquee: true,
+    marqueeText: "🔥 BLACK FRIDAY FLORA PURA • Use o cupom BLACK10 e ganhe 10% OFF • Só por tempo limitado 🔥",
+    darkTheme: true,
+    showBanner: true,
+    coupons: [{ code: "BLACK10", percent: "10" }],
+  },
+  notify: { enabled: true, lowStock: "3", salesGoal: "5", congrats: "Parabéns! A loja bateu {n} pedidos hoje! 🎉", push: false },
 };
 
 export type SiteContent = typeof defaultContent;
+
+export const mergeContent = (saved: Partial<SiteContent>): SiteContent => ({
+  ...defaultContent, ...saved,
+  colors: { ...defaultContent.colors, ...(saved.colors ?? {}) },
+  promo: { ...defaultContent.promo, ...(saved.promo ?? {}) },
+  notify: { ...defaultContent.notify, ...(saved.notify ?? {}) },
+});
+
+export type ReviewRow = { id: string; created_at: string; product_id: string; name: string; rating: number; body: string; photos: string[]; reply: string; visible: boolean; order_id: string };
 
 export type ProductRow = {
   id: string; name: string; category: string; price: number; old_price: number | null; image: string;
@@ -95,6 +116,7 @@ const fallback = {
   content: defaultContent,
   categories: staticCats.map((c) => ({ id: c.id as string, label: c.label, image: c.image })),
   products: staticProducts,
+  reviews: [] as ReviewRow[],
 };
 
 export function useSiteData() {
@@ -102,24 +124,26 @@ export function useSiteData() {
     queryKey: ["site"],
     placeholderData: fallback,
     queryFn: async () => {
-      const [s, c, p] = await Promise.all([
+      const [s, c, p, r] = await Promise.all([
         supabase.from("site_settings").select("value").eq("key", "content").maybeSingle(),
         supabase.from("categories").select("*").order("sort"),
         supabase.from("products").select("*").eq("visible", true).order("sort"),
+        supabase.from("reviews").select("*").eq("visible", true).order("created_at", { ascending: false }).limit(300),
       ]);
       const saved = (s.data?.value ?? {}) as Partial<SiteContent>;
       return {
-        content: { ...defaultContent, ...saved, colors: { ...defaultContent.colors, ...(saved.colors ?? {}) } },
+        content: mergeContent(saved),
         categories: (c.data ?? []).map((x) => ({ id: x.id, label: x.label, image: media(x.image) })),
         products: ((p.data ?? []) as ProductRow[]).map(rowToProduct),
+        reviews: ((r.data ?? []) as unknown as ReviewRow[]).map((x) => ({ ...x, photos: Array.isArray(x.photos) ? x.photos : [] })),
       };
     },
   });
 }
 
 /** Uploads a file to storage and returns a long-lived link. */
-export async function uploadMedia(file: File) {
-  const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+export async function uploadMedia(file: File, folder = "") {
+  const path = `${folder ? folder + "/" : ""}${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
   const up = await supabase.storage.from("media").upload(path, file, { contentType: file.type });
   if (up.error) throw up.error;
   const { data, error } = await supabase.storage.from("media").createSignedUrl(path, 60 * 60 * 24 * 365 * 20);
