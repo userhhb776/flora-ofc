@@ -29,6 +29,8 @@ export type Product = {
   image: string;
   badge?: string;
   description: string;
+  stock?: number | null;
+  featured?: boolean;
 };
 
 export const products: Product[] = [
