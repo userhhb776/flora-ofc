@@ -110,7 +110,7 @@ function Store() {
 
       {/* Benefits */}
       <section className="mx-auto grid max-w-6xl grid-cols-3 gap-2 px-4 py-6 text-center text-xs md:text-sm">
-        {site.benefits.slice(0, 3).map(({ t, s }, idx) => { const I = [MessageCircle, Truck, Leaf][idx]; return (
+        {site.benefits.slice(0, 3).map(({ t, s }, idx) => { const I = [MessageCircle, Truck, Leaf][idx] ?? Leaf; return (
           <div key={t} className="flex flex-col items-center gap-1">
             <I className="h-6 w-6 text-primary" />
             <span className="font-semibold">{t}</span>

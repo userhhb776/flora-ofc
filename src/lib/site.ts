@@ -85,8 +85,8 @@ export type CategoryRow = { id: string; label: string; image: string; sort: numb
 
 export const rowToProduct = (r: ProductRow): Product => ({
   id: r.id, name: r.name, category: r.category as Product["category"], price: Number(r.price),
-  oldPrice: r.old_price != null ? Number(r.old_price) : undefined, image: media(r.image),
-  badge: r.badge || undefined, description: r.description, stock: r.stock, featured: r.featured,
+  ...(r.old_price != null ? { oldPrice: Number(r.old_price) } : {}), image: media(r.image),
+  ...(r.badge ? { badge: r.badge } : {}), description: r.description, stock: r.stock, featured: r.featured,
 });
 
 const fallback = {

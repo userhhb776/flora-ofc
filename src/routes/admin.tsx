@@ -281,7 +281,7 @@ function Products() {
     const row = { ...p, badge: p.badge || null, old_price: p.old_price || null };
     const { id, ...rest } = row;
     const res = id ? await supabase.from("products").update(rest).eq("id", id) : await supabase.from("products").insert({ ...rest, sort: (data?.length ?? 0) + 1 });
-    if (res.error) return toast.error("Erro ao salvar: " + res.error.message);
+    if (res.error) { toast.error("Erro ao salvar: " + res.error.message); return; }
     toast.success("Produto salvo!"); setEdit(null); refetch(); qc.invalidateQueries({ queryKey: ["site"] });
   };
   const quick = async (id: string, patch: Partial<ProductRow>) => { await supabase.from("products").update(patch).eq("id", id); refetch(); qc.invalidateQueries({ queryKey: ["site"] }); };
@@ -347,13 +347,13 @@ function Categories() {
   const update = (i: number, patch: Partial<CategoryRow>) => setRows((r) => r.map((x, k) => (k === i ? { ...x, ...patch } : x)));
   const saveAll = async () => {
     const { error } = await supabase.from("categories").upsert(rows);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Categorias salvas!"); refetch(); qc.invalidateQueries({ queryKey: ["site"] });
   };
   const add = async () => {
     const id = newLabel.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `cat-${Date.now()}`;
     const { error } = await supabase.from("categories").insert({ id, label: newLabel, image: "", sort: rows.length + 1 });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setNewLabel(""); refetch(); qc.invalidateQueries({ queryKey: ["site"] });
   };
   return (
@@ -419,7 +419,7 @@ function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" }
     setBusy(true);
     const { error } = await supabase.from("site_settings").upsert({ key: "content", value: c as never, updated_at: new Date().toISOString() });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Alterações salvas!"); qc.invalidateQueries({ queryKey: ["site"] });
   };
   const saveBar = (
