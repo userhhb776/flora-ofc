@@ -20,7 +20,7 @@ function HeroSlider({ slides, onClick }: { slides: Slide[]; onClick: (productId:
   }, [slides.length]);
   const idx = i % Math.max(1, slides.length);
   return (
-    <section className="relative h-[78vh] max-h-[720px] overflow-hidden">
+    <section className="relative h-[46vh] max-h-[440px] overflow-hidden md:h-[58vh] md:max-h-[560px]">
       {slides.map((s, k) => {
         const src = media(s.image);
         return (
