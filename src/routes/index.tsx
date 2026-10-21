@@ -1,3 +1,4 @@
+import { uploadReviewPhoto } from "@/lib/review.functions";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ShoppingBag, Search, X, Minus, Plus, MapPin, Leaf, Truck, MessageCircle, Instagram, Star, Camera, LayoutGrid } from "lucide-react";
@@ -415,7 +416,9 @@ function CartDrawer() {
   const send = () => {
     const cust = { ...c, address: "", coupon: coupon ? coupon.code.trim().toUpperCase() : "" };
     window.open(whatsappLink(buildOrderMessage(lines, cust, site.address, discount), site.whatsapp), "_blank");
-    supabase.rpc("place_order", { _items: lines.map((l) => ({ id: l.product.id, qty: l.qty })), _customer: cust }).then(() => {});
+    supabase.rpc("place_order", { _items: lines.map((l) => ({ id: l.product.id, qty: l.qty })), _customer: cust }).then(({ data }) => {
+      if (data) try { localStorage.setItem("fp-review", JSON.stringify({ phone: cust.phone, code: String(data).replace(/-/g, "").slice(0, 8).toUpperCase() })); } catch { /* ignore */ }
+    });
     clear();
     setOpen(false);
   };
@@ -577,6 +580,8 @@ function ProductReviews({ id }: { id: string }) {
 
 function ReviewSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  useEffect(() => { if (open) try { const v = JSON.parse(localStorage.getItem("fp-review") || "null"); if (v) { setPhone((p) => p || v.phone || ""); setCode((c) => c || v.code || ""); } } catch { /* ignore */ } }, [open]);
   const [items, setItems] = useState<{ product_id: string; name: string }[] | null>(null);
   const [sel, setSel] = useState<string>("");
   const [rating, setRating] = useState(5);
@@ -588,13 +593,13 @@ function ReviewSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
   useEffect(() => { if (!open) { setItems(null); setSel(""); setBody(""); setPhotos([]); setRating(5); setMsg(""); } }, [open]);
   const find = async () => {
     setBusy(true);
-    const { data } = await supabase.rpc("reviewable_products", { _phone: phone });
+    const { data } = await supabase.rpc("reviewable_products", { _phone: phone, _code: code });
     setBusy(false);
     setItems((data ?? []) as { product_id: string; name: string }[]);
   };
   const submit = async () => {
     setBusy(true);
-    const { error } = await supabase.rpc("submit_review", { _phone: phone, _product_id: sel, _rating: rating, _body: body, _photos: photos });
+    const { error } = await supabase.rpc("submit_review", { _phone: phone, _code: code, _product_id: sel, _rating: rating, _body: body, _photos: photos });
     setBusy(false);
     if (error) { setMsg("Não foi possível enviar. Tente novamente."); return; }
     setMsg("Obrigada pela sua avaliação! 💚");
@@ -607,9 +612,10 @@ function ReviewSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
         {msg && <p className="rounded-xl bg-primary/10 p-3 text-sm font-semibold text-primary">{msg}</p>}
         {!items && (
           <>
-            <p className="text-sm text-muted-foreground">Digite o WhatsApp que você usou no pedido. Você pode avaliar os produtos dos pedidos já entregues.</p>
+            <p className="text-sm text-muted-foreground">Digite o WhatsApp que você usou no pedido e o código do pedido (enviado pela loja). Você pode avaliar os produtos dos pedidos já entregues.</p>
             <input className={input} type="tel" inputMode="tel" placeholder="(35) 9...." value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <button disabled={busy || phone.replace(/\D/g, "").length < 10} onClick={find} className="w-full rounded-full bg-primary py-3.5 font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Buscando…" : "Buscar minhas compras"}</button>
+            <input className={input} placeholder="Código do pedido (8 letras/números)" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+            <button disabled={busy || phone.replace(/\D/g, "").length < 10 || code.replace(/[^0-9A-F]/gi, "").length < 8} onClick={find} className="w-full rounded-full bg-primary py-3.5 font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Buscando…" : "Buscar minhas compras"}</button>
           </>
         )}
         {items && !sel && (
@@ -627,7 +633,7 @@ function ReviewSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
               {photos.length < 4 && (
                 <label className="grid h-16 w-16 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border text-muted-foreground">
                   <Camera className="h-5 w-5" />
-                  <input type="file" accept="image/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setBusy(true); try { const u = await uploadMedia(f, "reviews"); setPhotos((p) => [...p, u]); } catch { setMsg("Não foi possível enviar a foto."); } setBusy(false); }} />
+                  <input type="file" accept="image/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setBusy(true); try { if (f.size > 5e6) throw new Error("big"); const b64 = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] ?? ""); r.onerror = rej; r.readAsDataURL(f); }); const { url } = await uploadReviewPhoto({ data: { phone, code, type: f.type, data: b64 } }); setPhotos((p) => [...p, url]); } catch { setMsg("Não foi possível enviar a foto."); } setBusy(false); }} />
                 </label>
               )}
             </div>
