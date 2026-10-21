@@ -4,9 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { defaultContent, media, uploadMedia, type CategoryRow, type ProductRow, type SiteContent } from "@/lib/site";
+import { mergeContent, media, uploadMedia, type CategoryRow, type ProductRow, type SiteContent, type ReviewRow } from "@/lib/site";
 import { brl } from "@/lib/store";
-import { LogOut, Upload, Trash2, Plus, ExternalLink, LayoutDashboard, ShoppingCart, Package, Tags, Home, Palette, Store, UserCog, Eye, TrendingUp, Wallet, Menu, X, Film, Phone } from "lucide-react";
+import { LogOut, Upload, Trash2, Plus, ExternalLink, LayoutDashboard, ShoppingCart, Package, Tags, Home, Palette, Store, UserCog, Eye, TrendingUp, Wallet, Menu, X, Film, Phone, Bell, Star, Percent, Check } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -91,6 +91,9 @@ const TABS = [
   { id: "pedidos", label: "Pedidos", icon: ShoppingCart, group: "Gestão" },
   { id: "produtos", label: "Produtos", icon: Package, group: "Catálogo" },
   { id: "categorias", label: "Categorias", icon: Tags, group: "Catálogo" },
+  { id: "avaliacoes", label: "Avaliações", icon: Star, group: "Gestão" },
+  { id: "avisos", label: "Avisos", icon: Bell, group: "Gestão" },
+  { id: "promo", label: "Black Friday", icon: Percent, group: "Site" },
   { id: "pagina", label: "Página inicial", icon: Home, group: "Site" },
   { id: "aparencia", label: "Aparência", icon: Palette, group: "Site" },
   { id: "loja", label: "Loja", icon: Store, group: "Site" },
@@ -139,6 +142,9 @@ function Panel({ email }: { email: string }) {
             <p className="text-[11px] text-muted-foreground md:hidden">Flora Pura • Painel</p>
             <h1 className="truncate font-sans text-lg font-bold md:text-2xl">{current.label}</h1>
           </div>
+          <div className="flex shrink-0 gap-2">
+            <BellButton onOpen={() => go("avisos")} />
+          </div>
           <div className="flex shrink-0 gap-2 md:hidden">
             <a href="/" target="_blank" rel="noreferrer" aria-label="Ver loja" className={btnGhost}><ExternalLink className="h-4 w-4" /></a>
             <button aria-label="Sair" onClick={signOut} className={btnGhost}><LogOut className="h-4 w-4" /></button>
@@ -149,7 +155,9 @@ function Panel({ email }: { email: string }) {
           {tab === "pedidos" && <Orders />}
           {tab === "produtos" && <Products />}
           {tab === "categorias" && <Categories />}
-          {(tab === "pagina" || tab === "aparencia" || tab === "loja") && <ContentEditor section={tab} />}
+          {(tab === "pagina" || tab === "aparencia" || tab === "loja" || tab === "promo") && <ContentEditor key={tab} section={tab} />}
+          {tab === "avaliacoes" && <Reviews />}
+          {tab === "avisos" && <Notices />}
           {tab === "conta" && <Account email={email} />}
         </main>
       </div>
@@ -259,7 +267,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
 }
 
 /* ---------------- Orders ---------------- */
-type OrderT = { id: string; created_at: string; customer: { name?: string; phone?: string; delivery?: string; address?: string; payment?: string; notes?: string }; items: { name: string; qty: number; price: number }[]; total: number; status: string };
+type OrderT = { id: string; created_at: string; customer: { name?: string; phone?: string; delivery?: string; address?: string; payment?: string; notes?: string; coupon?: string; discount?: number }; items: { name: string; qty: number; price: number }[]; total: number; status: string };
 const STATUSES = ["novo", "confirmado", "em preparo", "entregue", "cancelado"];
 const statusCls: Record<string, string> = { novo: "bg-accent/25", confirmado: "bg-primary/15 text-primary", "em preparo": "bg-secondary", entregue: "bg-primary text-primary-foreground", cancelado: "bg-destructive/10 text-destructive" };
 
@@ -270,7 +278,7 @@ function OrderRow({ o, onStatus, onDelete }: { o: OrderT; onStatus?: (s: string)
         <div>
           <p className="font-semibold">{o.customer?.name || "Sem nome"} • {brl(Number(o.total))}</p>
           {o.customer?.phone && <a href={`https://wa.me/55${o.customer.phone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><Phone className="h-3 w-3" /> {o.customer.phone}</a>}
-          <p className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("pt-BR")} • {o.customer?.delivery === "retirada" ? "Retirada" : `Entrega: ${o.customer?.address ?? ""}`} • {o.customer?.payment}</p>
+          <p className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("pt-BR")} • {o.customer?.delivery === "retirada" ? "Retirada" : `Entrega: ${o.customer?.address ?? ""}`} • {o.customer?.payment}{o.customer?.coupon ? ` • Cupom ${o.customer.coupon} (-${o.customer.discount}%)` : ""}</p>
         </div>
         {onStatus ? (
           <div className="flex gap-2">
@@ -516,7 +524,7 @@ function ListEditor<T extends Record<string, string>>({ items, fields, onChange 
   );
 }
 
-function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" }) {
+function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" | "promo" }) {
   const qc = useQueryClient();
   const [c, setC] = useState<SiteContent | null>(null);
   const [busy, setBusy] = useState(false);
@@ -526,7 +534,7 @@ function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" }
   useEffect(() => {
     supabase.from("site_settings").select("value").eq("key", "content").maybeSingle().then(({ data }) => {
       const saved = (data?.value ?? {}) as Partial<SiteContent>;
-      setC({ ...defaultContent, ...saved, colors: { ...defaultContent.colors, ...(saved.colors ?? {}) } });
+      setC(mergeContent(saved));
     });
   }, []);
   if (!c) return <p className="text-muted-foreground">Carregando…</p>;
@@ -573,6 +581,39 @@ function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" }
         </Card>
         <Card title="Nome da loja">
           <div className="grid gap-3 md:grid-cols-2">{txt("storeName", "Nome")}{txt("storeTagline", "Frase abaixo do nome")}</div>
+        </Card>
+        {saveBar}
+      </>
+    );
+  }
+
+  if (section === "promo") {
+    const pr = c.promo;
+    const sp = (patch: Partial<SiteContent["promo"]>) => set("promo", { ...pr, ...patch });
+    const tog = (k: "enabled" | "marquee" | "darkTheme" | "showBanner", label: string) => (
+      <label className="flex items-center gap-2 rounded-lg bg-muted/60 p-3 text-sm font-semibold"><input type="checkbox" checked={pr[k]} onChange={(e) => sp({ [k]: e.target.checked })} /> {label}</label>
+    );
+    return (
+      <>
+        <Card title="Modo Black Friday">
+          <div className="grid gap-2 md:grid-cols-2">
+            {tog("enabled", "Ligar modo Black Friday na loja")}
+            {tog("darkTheme", "Visual preto e amarelo")}
+            {tog("marquee", "Faixa rolando com aviso no topo")}
+            {tog("showBanner", "Faixa com título e cupons")}
+          </div>
+          {!pr.enabled && <p className="mt-3 text-xs text-muted-foreground">Desligado: a loja aparece normal. Ligue e salve para ativar.</p>}
+        </Card>
+        <Card title="Textos">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Título"><input className={inputCls} value={pr.title} onChange={(e) => sp({ title: e.target.value })} /></Field>
+            <Field label="Subtítulo"><input className={inputCls} value={pr.subtitle} onChange={(e) => sp({ subtitle: e.target.value })} /></Field>
+            <div className="md:col-span-2"><Field label="Texto da faixa rolando"><textarea className={inputCls} rows={2} value={pr.marqueeText} onChange={(e) => sp({ marqueeText: e.target.value })} /></Field></div>
+          </div>
+        </Card>
+        <Card title="Cupons de desconto">
+          <p className="mb-2 text-xs text-muted-foreground">O cliente digita o cupom na sacola e o desconto (em %) é aplicado no total. Só funciona com o modo ligado.</p>
+          <ListEditor items={pr.coupons} fields={[["code", "Código (ex.: BLACK10)"], ["percent", "Desconto em %"]]} onChange={(v) => sp({ coupons: v })} />
         </Card>
         {saveBar}
       </>
@@ -630,10 +671,6 @@ function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" }
         </div>
       </Card>
       <Card title="Catálogo"><div className="grid gap-3">{txt("catalogTitle", "Título da seção")}</div></Card>
-      <Card title="Como comprar">
-        <div className="grid gap-3 md:grid-cols-2">{txt("howTitle", "Título")}{txt("howSubtitle", "Subtítulo")}</div>
-        <div className="mt-3"><ListEditor items={c.steps} fields={[["t", "Passo"], ["s", "Descrição"]]} onChange={(v) => set("steps", v)} /></div>
-      </Card>
       <Card title="Sobre a loja">
         <div className="grid gap-3">{txt("aboutTitle", "Título")}{txt("aboutText", "Texto", true)}</div>
         <div className="mt-3"><ListEditor items={c.stats} fields={[["a", "Destaque"], ["b", "Legenda"]]} onChange={(v) => set("stats", v)} /></div>
@@ -677,6 +714,122 @@ function Account({ email }: { email: string }) {
             if (error) toast.error(error.message); else toast.success("Pronto! Se pedir confirmação, verifique a caixa de entrada.");
           }}>Salvar novo e-mail</button>
         </div>
+      </Card>
+    </>
+  );
+}
+
+/* ---------------- Notifications ---------------- */
+type NoticeT = { id: string; created_at: string; kind: string; title: string; body: string; read: boolean };
+const useNotices = () => useQuery({
+  queryKey: ["admin-notices"], refetchInterval: 30000,
+  queryFn: async () => ((await supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(100)).data ?? []) as NoticeT[],
+});
+
+function BellButton({ onOpen }: { onOpen: () => void }) {
+  const { data } = useNotices();
+  const unread = (data ?? []).filter((n) => !n.read).length;
+  const last = useState<string | null>(null);
+  useEffect(() => {
+    const top = data?.[0];
+    if (!top) return;
+    if (last[0] && top.id !== last[0] && !top.read) toast(top.title, { description: top.body });
+    last[1](top.id);
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <button aria-label="Avisos" onClick={onOpen} className={`${btnGhost} relative`}>
+      <Bell className="h-4 w-4" />
+      {unread > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">{unread > 9 ? "9+" : unread}</span>}
+    </button>
+  );
+}
+
+function Notices() {
+  const qc = useQueryClient();
+  const { data, refetch } = useNotices();
+  const [cfg, setCfg] = useState<SiteContent | null>(null);
+  useEffect(() => { supabase.from("site_settings").select("value").eq("key", "content").maybeSingle().then(({ data }) => setCfg(mergeContent((data?.value ?? {}) as Partial<SiteContent>))); }, []);
+  const icon: Record<string, string> = { order: "🛍️", stock: "📦", congrats: "🎉", review: "⭐", info: "🔔" };
+  const readAll = async () => { await supabase.from("notifications").update({ read: true }).eq("read", false); refetch(); };
+  const saveCfg = async () => {
+    if (!cfg) return;
+    const { error } = await supabase.from("site_settings").upsert({ key: "content", value: cfg as never, updated_at: new Date().toISOString() });
+    if (error) toast.error(error.message); else { toast.success("Configurações salvas!"); qc.invalidateQueries({ queryKey: ["site"] }); }
+  };
+  const n = cfg?.notify;
+  const sn = (patch: Partial<SiteContent["notify"]>) => cfg && setCfg({ ...cfg, notify: { ...cfg.notify, ...patch } });
+  return (
+    <>
+      <Card title="Avisos" right={<button className={btnGhost} onClick={readAll}><Check className="h-4 w-4" /> Marcar todos como lidos</button>}>
+        {(data ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nenhum aviso ainda. Eles aparecem quando chega pedido, o estoque acaba, há muitas vendas ou uma nova avaliação.</p>}
+        {(data ?? []).map((x) => (
+          <div key={x.id} className={`flex gap-3 border-b border-border py-3 last:border-0 ${x.read ? "opacity-60" : ""}`}>
+            <span className="text-xl">{icon[x.kind] ?? "🔔"}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{x.title}</p>
+              <p className="text-xs text-muted-foreground">{x.body}</p>
+              <p className="text-[10px] text-muted-foreground">{new Date(x.created_at).toLocaleString("pt-BR")}</p>
+            </div>
+            {!x.read && <button className="text-xs font-semibold text-primary" onClick={async () => { await supabase.from("notifications").update({ read: true }).eq("id", x.id); refetch(); }}>Lido</button>}
+          </div>
+        ))}
+      </Card>
+      {n && (
+        <Card title="Configurar avisos" right={<button className={btn} onClick={saveCfg}>Salvar</button>}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm font-semibold md:col-span-2"><input type="checkbox" checked={n.enabled} onChange={(e) => sn({ enabled: e.target.checked })} /> Receber avisos</label>
+            <Field label="Avisar quando o estoque chegar a (unidades)"><input className={inputCls} type="number" value={n.lowStock} onChange={(e) => sn({ lowStock: e.target.value })} /></Field>
+            <Field label="Parabenizar a cada X pedidos no dia"><input className={inputCls} type="number" value={n.salesGoal} onChange={(e) => sn({ salesGoal: e.target.value })} /></Field>
+            <div className="md:col-span-2"><Field label="Mensagem de parabéns ({n} vira o número de pedidos)"><input className={inputCls} value={n.congrats} onChange={(e) => sn({ congrats: e.target.value })} /></Field></div>
+          </div>
+        </Card>
+      )}
+    </>
+  );
+}
+
+/* ---------------- Reviews ---------------- */
+function Reviews() {
+  const qc = useQueryClient();
+  const { data, refetch } = useQuery({ queryKey: ["admin-reviews"], queryFn: async () => ((await supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(500)).data ?? []) as unknown as ReviewRow[] });
+  const { data: products } = useQuery({ queryKey: ["admin-products"], queryFn: async () => ((await supabase.from("products").select("*").order("sort")).data ?? []) as ProductRow[] });
+  const [cfg, setCfg] = useState<SiteContent | null>(null);
+  const [replies, setReplies] = useState<Record<string, string>>({});
+  useEffect(() => { supabase.from("site_settings").select("value").eq("key", "content").maybeSingle().then(({ data }) => setCfg(mergeContent((data?.value ?? {}) as Partial<SiteContent>))); }, []);
+  const refresh = () => { refetch(); qc.invalidateQueries({ queryKey: ["site"] }); };
+  const toggle = async (on: boolean) => {
+    if (!cfg) return; const next = { ...cfg, reviewsEnabled: on }; setCfg(next);
+    const { error } = await supabase.from("site_settings").upsert({ key: "content", value: next as never, updated_at: new Date().toISOString() });
+    if (error) toast.error(error.message); else { toast.success(on ? "Avaliações ligadas" : "Avaliações desligadas"); qc.invalidateQueries({ queryKey: ["site"] }); }
+  };
+  return (
+    <>
+      <Card title="Avaliações dos clientes">
+        <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={cfg?.reviewsEnabled ?? true} onChange={(e) => toggle(e.target.checked)} /> Permitir avaliações na loja</label>
+        <p className="mt-2 text-xs text-muted-foreground">O cliente informa o WhatsApp usado no pedido e pode avaliar os produtos depois que você marcar o pedido como <b>entregue</b>.</p>
+      </Card>
+      <Card title={`Recebidas (${(data ?? []).length})`}>
+        {(data ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda.</p>}
+        {(data ?? []).map((r) => (
+          <div key={r.id} className={`border-b border-border py-3 text-sm last:border-0 ${!r.visible ? "opacity-60" : ""}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-semibold">{r.name || "Cliente"} • <span className="text-accent">{"★".repeat(r.rating)}</span><span className="text-muted-foreground">{"★".repeat(5 - r.rating)}</span></p>
+                <p className="text-xs text-muted-foreground">{products?.find((p) => p.id === r.product_id)?.name ?? r.product_id} • {new Date(r.created_at).toLocaleDateString("pt-BR")}</p>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <label className="flex items-center gap-1"><input type="checkbox" checked={r.visible} onChange={async (e) => { await supabase.from("reviews").update({ visible: e.target.checked }).eq("id", r.id); refresh(); }} /> Visível</label>
+                <button aria-label="Apagar" className="text-destructive" onClick={async () => { if (confirm("Apagar esta avaliação?")) { await supabase.from("reviews").delete().eq("id", r.id); refresh(); } }}><Trash2 className="h-4 w-4" /></button>
+              </div>
+            </div>
+            {r.body && <p className="mt-1">{r.body}</p>}
+            {Array.isArray(r.photos) && r.photos.length > 0 && <div className="mt-2 flex gap-2">{r.photos.map((ph) => <a key={ph} href={ph} target="_blank" rel="noreferrer"><img src={ph} alt="" className="h-16 w-16 rounded-lg object-cover" /></a>)}</div>}
+            <div className="mt-2 flex gap-2">
+              <input className={inputCls} placeholder="Responder ao cliente…" value={replies[r.id] ?? r.reply} onChange={(e) => setReplies({ ...replies, [r.id]: e.target.value })} />
+              <button className={btn} onClick={async () => { const { error } = await supabase.from("reviews").update({ reply: replies[r.id] ?? r.reply, replied_at: new Date().toISOString() }).eq("id", r.id); if (error) toast.error(error.message); else { toast.success("Resposta publicada"); refresh(); } }}>Responder</button>
+            </div>
+          </div>
+        ))}
       </Card>
     </>
   );
