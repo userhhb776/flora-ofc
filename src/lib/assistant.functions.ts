@@ -18,7 +18,8 @@ export const askAssistant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { messages: Msg[] }) => {
     if (!Array.isArray(d?.messages) || d.messages.length === 0 || d.messages.length > 60) throw new Error("invalid");
-    return { messages: d.messages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content).slice(0, 8000) })) as Msg[] };
+    // Never trust client-supplied roles: everything is sent as "user"; earlier assistant turns are quoted as history.
+    return { messages: d.messages.map((m) => ({ role: "user", content: (m.role === "assistant" ? "[Resposta anterior do assistente, apenas histórico]: " : "") + String(m.content).slice(0, 8000) })) as Msg[] };
   })
   .handler(async ({ data, context }) => {
     const sb = context.supabase;

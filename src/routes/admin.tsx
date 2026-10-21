@@ -284,7 +284,7 @@ function OrderRow({ o, onStatus, onDelete }: { o: OrderT; onStatus?: (s: string)
         <div>
           <p className="font-semibold">{o.customer?.name || "Sem nome"} • {brl(Number(o.total))}</p>
           {o.customer?.phone && <a href={`https://wa.me/55${o.customer.phone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><Phone className="h-3 w-3" /> {o.customer.phone}</a>}
-          <p className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("pt-BR")} • {o.customer?.delivery === "retirada" ? "Retirada" : `Entrega: ${o.customer?.address ?? ""}`} • {o.customer?.payment}{o.customer?.coupon ? ` • Cupom ${o.customer.coupon} (-${o.customer.discount}%)` : ""}</p>
+          <p className="text-xs text-muted-foreground">Código p/ avaliação: <b>{o.id.replace(/-/g, "").slice(0, 8).toUpperCase()}</b> • {new Date(o.created_at).toLocaleString("pt-BR")} • {o.customer?.delivery === "retirada" ? "Retirada" : `Entrega: ${o.customer?.address ?? ""}`} • {o.customer?.payment}{o.customer?.coupon ? ` • Cupom ${o.customer.coupon} (-${o.customer.discount}%)` : ""}</p>
         </div>
         {onStatus ? (
           <div className="flex gap-2">

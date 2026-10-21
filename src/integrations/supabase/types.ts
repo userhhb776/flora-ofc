@@ -260,7 +260,7 @@ export type Database = {
       }
       place_order: { Args: { _customer: Json; _items: Json }; Returns: string }
       reviewable_products: {
-        Args: { _phone: string }
+        Args: { _code: string; _phone: string }
         Returns: {
           name: string
           order_id: string
@@ -275,6 +275,7 @@ export type Database = {
       submit_review: {
         Args: {
           _body: string
+          _code: string
           _phone: string
           _photos: Json
           _product_id: string
