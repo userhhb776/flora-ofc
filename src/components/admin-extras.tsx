@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import { Bot, Send, Check, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,7 +103,7 @@ export function Assistant() {
           const { body, actions } = splitActions(m.content);
           return (
             <div key={i} className="max-w-full text-sm">
-              <div className="prose prose-sm max-w-none [&_table]:block [&_table]:overflow-x-auto"><ReactMarkdown>{body}</ReactMarkdown></div>
+              <div className="prose prose-sm max-w-none [&_table]:block [&_table]:overflow-x-auto"><ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown></div>
               {actions.length > 0 && (
                 <div className="mt-2 rounded-xl border border-primary/40 bg-primary/5 p-3">
                   <p className="mb-1 text-xs font-bold">Mudanças sugeridas:</p>
