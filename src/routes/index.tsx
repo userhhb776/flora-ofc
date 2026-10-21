@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ShoppingBag, Search, X, Minus, Plus, MapPin, Leaf, Truck, MessageCircle, Instagram, Star } from "lucide-react";
 import hero from "@/assets/hero.jpg";
-import bananaVideo from "@/assets/banana.mp4.asset.json";
-import bananaImg from "@/assets/banana.jpg.asset.json";
+import bananaImgSrc from "@/assets/banana.jpg";
 import { CartProvider, useCart } from "@/lib/cart";
 import {
   ADDRESS, brl, buildOrderMessage, cartTotal, categories, products, whatsappLink,
@@ -129,7 +128,7 @@ function Store() {
       {/* Launch banner */}
       <section className="mx-auto my-8 max-w-6xl md:px-4">
         <div className="grid overflow-hidden bg-accent/25 md:grid-cols-2 md:rounded-3xl">
-          <video src={bananaVideo.url} poster={bananaImg.url} autoPlay muted loop playsInline className="aspect-square w-full object-cover md:aspect-auto md:h-full" />
+          <img src={bananaImgSrc} alt="Linha Frutas Banana" width={1024} height={1024} loading="lazy" className="aspect-square w-full object-cover md:aspect-auto md:h-full" />
           <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
             <h2 className="text-4xl font-semibold">Nova linha Frutas: Banana</h2>
             <p className="max-w-sm text-muted-foreground">Produtos inspirados na banana para transformar o autocuidado em um momento ainda mais gostoso.</p>

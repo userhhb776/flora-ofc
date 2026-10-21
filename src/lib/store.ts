@@ -3,7 +3,8 @@ import capilar from "@/assets/capilar.jpg";
 import oleos from "@/assets/oleos.jpg";
 import skincare from "@/assets/skincare.jpg";
 import perfume from "@/assets/perfume.jpg";
-import bananaAsset from "@/assets/banana.jpg.asset.json";
+import bananaImg from "@/assets/banana.jpg";
+const bananaAsset = { url: bananaImg };
 
 export const WHATSAPP = "556892629717";
 export const ADDRESS = "Rua Prefeito Chagas, 15, Centro, Poços de Caldas - MG, CEP 37701-010";
