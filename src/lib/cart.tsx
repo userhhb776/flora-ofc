@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { products, type CartLine, type Product } from "./store";
+import { type CartLine, type Product } from "./store";
 
 type Ctx = {
   lines: CartLine[];
@@ -19,16 +19,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = JSON.parse(localStorage.getItem("fp-cart") || "[]") as { id: string; qty: number }[];
-      setLines(raw.flatMap((r) => {
-        const product = products.find((p) => p.id === r.id);
-        return product ? [{ product, qty: r.qty }] : [];
-      }));
+      const raw = JSON.parse(localStorage.getItem("fp-cart2") || "[]") as CartLine[];
+      setLines(raw.filter((r) => r?.product?.id && r.qty > 0));
     } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("fp-cart", JSON.stringify(lines.map((l) => ({ id: l.product.id, qty: l.qty }))));
+    localStorage.setItem("fp-cart2", JSON.stringify(lines));
   }, [lines]);
 
   const add = (p: Product, qty = 1) => {
