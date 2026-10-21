@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { defaultContent, media, uploadMedia, type CategoryRow, type ProductRow, type SiteContent } from "@/lib/site";
 import { brl } from "@/lib/store";
-import { LogOut, Upload, Trash2, Plus, ExternalLink } from "lucide-react";
+import { LogOut, Upload, Trash2, Plus, ExternalLink, LayoutDashboard, ShoppingCart, Package, Tags, Home, Palette, Store, UserCog, Eye, TrendingUp, Wallet, Menu, X, Film, Phone } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -87,55 +87,113 @@ function Login() {
 }
 
 const TABS = [
-  ["geral", "Visão geral"], ["pedidos", "Pedidos"], ["produtos", "Produtos"], ["categorias", "Categorias"],
-  ["pagina", "Página inicial"], ["aparencia", "Aparência"], ["loja", "Loja"], ["conta", "Conta"],
+  { id: "geral", label: "Visão geral", icon: LayoutDashboard, group: "Gestão" },
+  { id: "pedidos", label: "Pedidos", icon: ShoppingCart, group: "Gestão" },
+  { id: "produtos", label: "Produtos", icon: Package, group: "Catálogo" },
+  { id: "categorias", label: "Categorias", icon: Tags, group: "Catálogo" },
+  { id: "pagina", label: "Página inicial", icon: Home, group: "Site" },
+  { id: "aparencia", label: "Aparência", icon: Palette, group: "Site" },
+  { id: "loja", label: "Loja", icon: Store, group: "Site" },
+  { id: "conta", label: "Conta", icon: UserCog, group: "Site" },
 ] as const;
-type Tab = (typeof TABS)[number][0];
+type Tab = (typeof TABS)[number]["id"];
+const MOBILE_MAIN: Tab[] = ["geral", "pedidos", "produtos"];
 
 function Panel({ email }: { email: string }) {
   const [tab, setTab] = useState<Tab>("geral");
+  const [more, setMore] = useState(false);
   const qc = useQueryClient();
   const signOut = async () => { await qc.cancelQueries(); qc.clear(); await supabase.auth.signOut(); };
+  const current = TABS.find((t) => t.id === tab)!;
+  const go = (t: Tab) => { setTab(t); setMore(false); window.scrollTo({ top: 0 }); };
+  const groups = ["Gestão", "Catálogo", "Site"];
   return (
-    <div className="mx-auto max-w-6xl p-3 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold">Painel Flora Pura</h1>
-          <p className="text-xs text-muted-foreground">{email}</p>
+    <div className="flex min-h-screen">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-card p-4 md:flex">
+        <div className="mb-6 px-2">
+          <p className="font-display text-xl font-semibold text-primary">Flora Pura</p>
+          <p className="text-xs text-muted-foreground">Painel administrativo</p>
         </div>
-        <div className="flex gap-2">
-          <a href="/" target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink className="h-4 w-4" /> Ver loja</a>
-          <button onClick={signOut} className={btnGhost}><LogOut className="h-4 w-4" /> Sair</button>
+        <nav className="flex-1 space-y-5 overflow-y-auto">
+          {groups.map((g) => (
+            <div key={g}>
+              <p className="mb-1 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{g}</p>
+              {TABS.filter((t) => t.group === g).map((t) => (
+                <button key={t.id} onClick={() => go(t.id)} className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${tab === t.id ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"}`}>
+                  <t.icon className="h-4 w-4" /> {t.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="space-y-1 border-t border-border pt-3">
+          <p className="truncate px-2 text-xs text-muted-foreground">{email}</p>
+          <a href="/" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"><ExternalLink className="h-4 w-4" /> Ver loja</a>
+          <button onClick={signOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"><LogOut className="h-4 w-4" /> Sair</button>
         </div>
-      </header>
-      <nav className="mt-4 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
-        {TABS.map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tab === id ? "bg-primary text-primary-foreground" : "bg-card"}`}>{label}</button>
-        ))}
+      </aside>
+
+      <div className="min-w-0 flex-1 pb-24 md:pb-0">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-8">
+          <div className="min-w-0">
+            <p className="text-[11px] text-muted-foreground md:hidden">Flora Pura • Painel</p>
+            <h1 className="truncate font-sans text-lg font-bold md:text-2xl">{current.label}</h1>
+          </div>
+          <div className="flex shrink-0 gap-2 md:hidden">
+            <a href="/" target="_blank" rel="noreferrer" aria-label="Ver loja" className={btnGhost}><ExternalLink className="h-4 w-4" /></a>
+            <button aria-label="Sair" onClick={signOut} className={btnGhost}><LogOut className="h-4 w-4" /></button>
+          </div>
+        </header>
+        <main className="mx-auto max-w-6xl p-3 md:p-8">
+          {tab === "geral" && <Overview go={go} />}
+          {tab === "pedidos" && <Orders />}
+          {tab === "produtos" && <Products />}
+          {tab === "categorias" && <Categories />}
+          {(tab === "pagina" || tab === "aparencia" || tab === "loja") && <ContentEditor section={tab} />}
+          {tab === "conta" && <Account email={email} />}
+        </main>
+      </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
+        {MOBILE_MAIN.map((id) => { const t = TABS.find((x) => x.id === id)!; return (
+          <button key={id} onClick={() => go(id)} className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${tab === id ? "text-primary" : "text-muted-foreground"}`}>
+            <t.icon className="h-5 w-5" /> {t.label === "Visão geral" ? "Início" : t.label}
+          </button>
+        ); })}
+        <button onClick={() => setMore(true)} className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${!MOBILE_MAIN.includes(tab) ? "text-primary" : "text-muted-foreground"}`}>
+          <Menu className="h-5 w-5" /> Mais
+        </button>
       </nav>
-      <main className="mt-4">
-        {tab === "geral" && <Overview />}
-        {tab === "pedidos" && <Orders />}
-        {tab === "produtos" && <Products />}
-        {tab === "categorias" && <Categories />}
-        {(tab === "pagina" || tab === "aparencia" || tab === "loja") && <ContentEditor section={tab} />}
-        {tab === "conta" && <Account email={email} />}
-      </main>
+      {more && (
+        <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMore(false)}>
+          <div className="absolute inset-0 bg-foreground/40" />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between"><p className="font-bold">Mais opções</p><button aria-label="Fechar" onClick={() => setMore(false)}><X className="h-5 w-5" /></button></div>
+            <div className="grid grid-cols-3 gap-2">
+              {TABS.filter((t) => !MOBILE_MAIN.includes(t.id)).map((t) => (
+                <button key={t.id} onClick={() => go(t.id)} className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 text-xs font-semibold ${tab === t.id ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                  <t.icon className="h-5 w-5" /> {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function Card({ title, children, right }: { title?: string; children: ReactNode; right?: ReactNode }) {
   return (
-    <section className="mb-4 rounded-2xl bg-card p-4 shadow-sm">
-      {(title || right) && <div className="mb-3 flex items-center justify-between gap-2"><h2 className="font-sans text-base font-bold">{title}</h2>{right}</div>}
+    <section className="mb-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-5">
+      {(title || right) && <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-sans text-base font-bold">{title}</h2>{right}</div>}
       {children}
     </section>
   );
 }
 
 /* ---------------- Overview ---------------- */
-function Overview() {
+function Overview({ go }: { go: (t: Tab) => void }) {
   const { data } = useQuery({
     queryKey: ["admin-overview"],
     queryFn: async () => {
@@ -159,18 +217,28 @@ function Overview() {
       }
       const ord = orders.data ?? [];
       const monthOrders = ord.filter((o) => o.created_at >= since(30));
-      return { today, week, month, total, perDay, orders: ord.slice(0, 5), monthCount: monthOrders.length, monthRevenue: monthOrders.filter((o) => o.status !== "cancelado").reduce((s, o) => s + Number(o.total), 0) };
+      const lowStock = ((await supabase.from("products").select("id,name,stock").not("stock", "is", null).lte("stock", 3).order("stock")).data ?? []);
+      return { lowStock, newCount: ord.filter((o) => o.status === "novo").length, today, week, month, total, perDay, orders: ord.slice(0, 5), monthCount: monthOrders.length, monthRevenue: monthOrders.filter((o) => o.status !== "cancelado").reduce((s, o) => s + Number(o.total), 0) };
     },
   });
   if (!data) return <p className="text-muted-foreground">Carregando…</p>;
   const max = Math.max(1, ...data.perDay.map((p) => p.n));
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
-        {[["Acessos hoje", data.today], ["Últimos 7 dias", data.week], ["Últimos 30 dias", data.month], ["Total de acessos", data.total], ["Pedidos (30 dias)", data.monthCount], ["Vendas (30 dias)", brl(data.monthRevenue)]].map(([l, v]) => (
-          <div key={l as string} className="rounded-2xl bg-card p-4 shadow-sm"><p className="text-xs text-muted-foreground">{l}</p><p className="mt-1 text-xl font-bold">{v}</p></div>
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {([["Acessos hoje", data.today, Eye, `${data.week} na semana`], ["Acessos (30 dias)", data.month, TrendingUp, `${data.total} no total`], ["Pedidos (30 dias)", data.monthCount, ShoppingCart, `${data.newCount} novos aguardando`], ["Vendas (30 dias)", brl(data.monthRevenue), Wallet, "sem cancelados"]] as const).map(([l, v, I, sub]) => (
+          <div key={l} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between"><p className="text-xs font-semibold text-muted-foreground">{l}</p><span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary"><I className="h-4 w-4" /></span></div>
+            <p className="mt-2 text-xl font-bold md:text-2xl">{v}</p>
+            <p className="text-[11px] text-muted-foreground">{sub}</p>
+          </div>
         ))}
       </div>
+      {data.lowStock.length > 0 && (
+        <Card title="Estoque baixo" right={<button className="text-xs font-semibold text-primary underline" onClick={() => go("produtos")}>Ver produtos</button>}>
+          <div className="flex flex-wrap gap-2">{data.lowStock.map((p) => <span key={p.id} className={`rounded-full px-3 py-1 text-xs font-semibold ${p.stock === 0 ? "bg-destructive/10 text-destructive" : "bg-accent/20"}`}>{p.name}: {p.stock === 0 ? "esgotado" : `${p.stock} un.`}</span>)}</div>
+        </Card>
+      )}
       <Card title="Acessos nos últimos 14 dias">
         <div className="flex h-32 items-end gap-1">
           {data.perDay.map((p) => (
@@ -182,7 +250,7 @@ function Overview() {
           ))}
         </div>
       </Card>
-      <Card title="Pedidos recentes">
+      <Card title="Pedidos recentes" right={<button className="text-xs font-semibold text-primary underline" onClick={() => go("pedidos")}>Ver todos</button>}>
         {data.orders.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum pedido ainda.</p> :
           data.orders.map((o) => <OrderRow key={o.id} o={o as OrderT} />)}
       </Card>
@@ -191,8 +259,9 @@ function Overview() {
 }
 
 /* ---------------- Orders ---------------- */
-type OrderT = { id: string; created_at: string; customer: { name?: string; delivery?: string; address?: string; payment?: string; notes?: string }; items: { name: string; qty: number; price: number }[]; total: number; status: string };
-const STATUSES = ["novo", "em preparo", "entregue", "cancelado"];
+type OrderT = { id: string; created_at: string; customer: { name?: string; phone?: string; delivery?: string; address?: string; payment?: string; notes?: string }; items: { name: string; qty: number; price: number }[]; total: number; status: string };
+const STATUSES = ["novo", "confirmado", "em preparo", "entregue", "cancelado"];
+const statusCls: Record<string, string> = { novo: "bg-accent/25", confirmado: "bg-primary/15 text-primary", "em preparo": "bg-secondary", entregue: "bg-primary text-primary-foreground", cancelado: "bg-destructive/10 text-destructive" };
 
 function OrderRow({ o, onStatus, onDelete }: { o: OrderT; onStatus?: (s: string) => void; onDelete?: () => void }) {
   return (
@@ -200,6 +269,7 @@ function OrderRow({ o, onStatus, onDelete }: { o: OrderT; onStatus?: (s: string)
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-semibold">{o.customer?.name || "Sem nome"} • {brl(Number(o.total))}</p>
+          {o.customer?.phone && <a href={`https://wa.me/55${o.customer.phone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><Phone className="h-3 w-3" /> {o.customer.phone}</a>}
           <p className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("pt-BR")} • {o.customer?.delivery === "retirada" ? "Retirada" : `Entrega: ${o.customer?.address ?? ""}`} • {o.customer?.payment}</p>
         </div>
         {onStatus ? (
@@ -207,7 +277,7 @@ function OrderRow({ o, onStatus, onDelete }: { o: OrderT; onStatus?: (s: string)
             <select className={`${inputCls} w-auto`} value={o.status} onChange={(e) => onStatus(e.target.value)}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
             <button aria-label="Apagar" onClick={onDelete} className={btnGhost}><Trash2 className="h-4 w-4" /></button>
           </div>
-        ) : <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{o.status}</span>}
+        ) : <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusCls[o.status] ?? "bg-muted"}`}>{o.status}</span>}
       </div>
       <ul className="mt-1 text-xs text-muted-foreground">{(o.items ?? []).map((i, k) => <li key={k}>{i.qty}x {i.name} — {brl(i.price * i.qty)}</li>)}</ul>
       {o.customer?.notes && <p className="mt-1 text-xs">Obs.: {o.customer.notes}</p>}
@@ -221,19 +291,27 @@ function Orders() {
     queryKey: ["admin-orders"],
     queryFn: async () => ((await supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(1000)).data ?? []) as unknown as OrderT[],
   });
+  const qc = useQueryClient();
   const list = (data ?? []).filter((o) => filter === "todos" || o.status === filter);
   return (
-    <Card title={`Pedidos (${list.length})`} right={
-      <select className={`${inputCls} w-auto`} value={filter} onChange={(e) => setFilter(e.target.value)}>
-        <option value="todos">Todos</option>{STATUSES.map((s) => <option key={s}>{s}</option>)}
-      </select>}>
+    <>
+    <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+      {["todos", ...STATUSES].map((s) => (
+        <button key={s} onClick={() => setFilter(s)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold capitalize ${filter === s ? "bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
+          {s} ({s === "todos" ? (data ?? []).length : (data ?? []).filter((o) => o.status === s).length})
+        </button>
+      ))}
+    </div>
+    <p className="mb-3 rounded-xl bg-accent/15 p-3 text-xs">Ao marcar um pedido como <b>confirmado</b>, <b>em preparo</b> ou <b>entregue</b>, o estoque dos produtos diminui. Se cancelar ou voltar para novo, o estoque volta.</p>
+    <Card title={`Pedidos (${list.length})`}>
       {list.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pedido.</p>}
       {list.map((o) => (
         <OrderRow key={o.id} o={o}
-          onStatus={async (s) => { await supabase.from("orders").update({ status: s }).eq("id", o.id); refetch(); }}
+          onStatus={async (s) => { const { error } = await supabase.rpc("set_order_status", { _id: o.id, _status: s }); if (error) toast.error(error.message); else toast.success("Status atualizado"); refetch(); qc.invalidateQueries({ queryKey: ["admin-products"] }); qc.invalidateQueries({ queryKey: ["site"] }); }}
           onDelete={async () => { if (confirm("Apagar este pedido?")) { await supabase.from("orders").delete().eq("id", o.id); refetch(); } }} />
       ))}
     </Card>
+    </>
   );
 }
 
@@ -267,7 +345,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /* ---------------- Products ---------------- */
-const emptyProduct: ProductRow = { id: "", name: "", category: "", price: 0, old_price: null, image: "", badge: "", description: "", stock: null, featured: false, visible: true, sort: 0 };
+const emptyProduct: ProductRow = { id: "", name: "", category: "", price: 0, old_price: null, image: "", badge: "", description: "", stock: null, featured: false, visible: true, sort: 0, images: [], video: "" };
 
 function Products() {
   const qc = useQueryClient();
@@ -278,7 +356,7 @@ function Products() {
   const list = (data ?? []).filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
   const save = async (p: ProductRow) => {
-    const row = { ...p, badge: p.badge || null, old_price: p.old_price || null };
+    const row = { ...p, badge: p.badge || null, old_price: p.old_price || null, images: p.images ?? [], video: p.video ?? "" };
     const { id, ...rest } = row;
     const res = id ? await supabase.from("products").update(rest).eq("id", id) : await supabase.from("products").insert({ ...rest, sort: (data?.length ?? 0) + 1 });
     if (res.error) { toast.error("Erro ao salvar: " + res.error.message); return; }
@@ -290,18 +368,30 @@ function Products() {
   return (
     <Card title={`Produtos (${list.length})`} right={<button className={btn} onClick={() => setEdit({ ...emptyProduct, category: cats?.[0]?.id ?? "" })}><Plus className="h-4 w-4" /> Novo</button>}>
       <input className={`${inputCls} mb-3`} placeholder="Buscar produto…" value={search} onChange={(e) => setSearch(e.target.value)} />
-      <div className="divide-y divide-border">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {list.map((p) => (
-          <div key={p.id} className="flex flex-wrap items-center gap-3 py-2.5">
-            <img src={media(p.image)} alt="" className="h-14 w-14 rounded-lg object-cover" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{p.name} {!p.visible && <span className="text-xs text-destructive">(oculto)</span>}</p>
-              <p className="text-xs text-muted-foreground">{brl(Number(p.price))} • {cats?.find((c) => c.id === p.category)?.label ?? p.category} • Estoque: {p.stock ?? "ilimitado"}</p>
+          <div key={p.id} className={`flex gap-3 rounded-xl border border-border p-3 ${!p.visible ? "opacity-60" : ""}`}>
+            <div className="relative shrink-0">
+              <img src={media(p.image)} alt="" className="h-20 w-20 rounded-lg object-cover" />
+              {(p.images?.length ?? 0) > 0 && <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1 text-[10px] font-bold">+{p.images.length}</span>}
+              {p.video && <Film className="absolute right-1 top-1 h-4 w-4 rounded bg-background/90 p-0.5" />}
             </div>
-            <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={p.featured} onChange={(e) => quick(p.id, { featured: e.target.checked })} /> Destaque</label>
-            <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={p.visible} onChange={(e) => quick(p.id, { visible: e.target.checked })} /> Visível</label>
-            <button className={btnGhost} onClick={() => setEdit(p)}>Editar</button>
-            <button aria-label="Apagar" className={btnGhost} onClick={async () => { if (confirm(`Apagar "${p.name}"?`)) { await supabase.from("products").delete().eq("id", p.id); refetch(); qc.invalidateQueries({ queryKey: ["site"] }); } }}><Trash2 className="h-4 w-4" /></button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{p.name}</p>
+              <p className="text-xs text-muted-foreground">{brl(Number(p.price))} • {cats?.find((c) => c.id === p.category)?.label ?? p.category}</p>
+              <div className="mt-1 flex items-center gap-1">
+                <span className="text-xs">Estoque:</span>
+                <input aria-label="Estoque" type="number" className="w-16 rounded border border-input bg-card px-1.5 py-0.5 text-xs" defaultValue={p.stock ?? ""} placeholder="∞"
+                  onBlur={(e) => { const v = e.target.value === "" ? null : Number(e.target.value); if (v !== p.stock) quick(p.id, { stock: v }); }} />
+                {p.stock === 0 && <span className="text-[10px] font-bold text-destructive">ESGOTADO</span>}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <label className="flex items-center gap-1"><input type="checkbox" checked={p.featured} onChange={(e) => quick(p.id, { featured: e.target.checked })} /> Destaque</label>
+                <label className="flex items-center gap-1"><input type="checkbox" checked={p.visible} onChange={(e) => quick(p.id, { visible: e.target.checked })} /> Visível</label>
+                <button className="ml-auto font-semibold text-primary underline" onClick={() => setEdit(p)}>Editar</button>
+                <button aria-label="Apagar" className="text-destructive" onClick={async () => { if (confirm(`Apagar "${p.name}"?`)) { await supabase.from("products").delete().eq("id", p.id); refetch(); qc.invalidateQueries({ queryKey: ["site"] }); } }}><Trash2 className="h-4 w-4" /></button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -315,7 +405,8 @@ function ProductForm({ p: initial, cats, onCancel, onSave }: { p: ProductRow; ca
   return (
     <Card title={initial.id ? "Editar produto" : "Novo produto"}>
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="md:col-span-2"><Field label="Foto"><MediaInput value={p.image} onChange={(v) => set("image", v)} /></Field></div>
+        <div className="md:col-span-2"><Field label="Fotos (a primeira é a principal)"><Gallery main={p.image} extra={p.images ?? []} onChange={(main, extra) => setP((x) => ({ ...x, image: main, images: extra }))} /></Field></div>
+        <div className="md:col-span-2"><Field label="Vídeo do produto (opcional, toca sem som)"><MediaInput video value={p.video ?? ""} onChange={(v) => set("video", v)} /></Field></div>
         <Field label="Nome"><input className={inputCls} value={p.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label="Categoria"><select className={inputCls} value={p.category} onChange={(e) => set("category", e.target.value)}>{cats.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select></Field>
         <Field label="Preço (R$)"><input className={inputCls} type="number" step="0.01" value={p.price} onChange={(e) => set("price", Number(e.target.value))} /></Field>
@@ -334,6 +425,36 @@ function ProductForm({ p: initial, cats, onCancel, onSave }: { p: ProductRow; ca
         <button className={btnGhost} onClick={onCancel}>Cancelar</button>
       </div>
     </Card>
+  );
+}
+
+function Gallery({ main, extra, onChange }: { main: string; extra: string[]; onChange: (main: string, extra: string[]) => void }) {
+  const [busy, setBusy] = useState(false);
+  const all = [main, ...extra].filter(Boolean);
+  const update = (list: string[]) => onChange(list[0] ?? "", list.slice(1));
+  return (
+    <div className="flex flex-wrap gap-2">
+      {all.map((src, i) => (
+        <div key={src + i} className={`relative h-24 w-24 overflow-hidden rounded-lg ring-2 ${i === 0 ? "ring-primary" : "ring-border"}`}>
+          <img src={media(src)} alt="" className="h-full w-full object-cover" />
+          {i === 0 && <span className="absolute left-1 top-1 rounded bg-primary px-1 text-[9px] font-bold text-primary-foreground">PRINCIPAL</span>}
+          <div className="absolute inset-x-0 bottom-0 flex justify-between bg-foreground/60 p-1">
+            {i > 0 ? <button className="text-[10px] font-semibold text-background" onClick={() => update([src, ...all.filter((_, k) => k !== i)])}>Principal</button> : <span />}
+            <button aria-label="Remover foto" className="text-background" onClick={() => update(all.filter((_, k) => k !== i))}><Trash2 className="h-3.5 w-3.5" /></button>
+          </div>
+        </div>
+      ))}
+      <label className="grid h-24 w-24 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border text-center text-xs text-muted-foreground">
+        <span className="flex flex-col items-center gap-1"><Upload className="h-5 w-5" />{busy ? "Enviando…" : "Adicionar fotos"}</span>
+        <input type="file" hidden multiple accept="image/*" disabled={busy} onChange={async (e) => {
+          const files = Array.from(e.target.files ?? []); if (!files.length) return;
+          setBusy(true);
+          try { const urls = await Promise.all(files.map(uploadMedia)); update([...all, ...urls]); toast.success("Fotos enviadas. Lembre de salvar."); }
+          catch { toast.error("Não foi possível enviar as fotos."); }
+          setBusy(false); e.target.value = "";
+        }} />
+      </label>
+    </div>
   );
 }
 
@@ -423,7 +544,7 @@ function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" }
     toast.success("Alterações salvas!"); qc.invalidateQueries({ queryKey: ["site"] });
   };
   const saveBar = (
-    <div className="sticky bottom-0 z-10 -mx-3 flex justify-end gap-2 bg-muted/90 p-3 backdrop-blur md:mx-0 md:rounded-2xl">
+    <div className="sticky bottom-16 z-10 -mx-3 flex md:bottom-0 justify-end gap-2 bg-muted/90 p-3 backdrop-blur md:mx-0 md:rounded-2xl">
       <button className={btn} disabled={busy} onClick={save}>{busy ? "Salvando…" : "Salvar alterações"}</button>
     </div>
   );
