@@ -6,6 +6,51 @@ import { brl, buildOrderMessage, cartTotal, whatsappLink, type Category, type Cu
 import { media, useSiteData, defaultContent, uploadMedia, type SiteContent, type ReviewRow } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 import { createContext, useContext, type CSSProperties } from "react";
+import { isVideo } from "@/lib/media-kind";
+
+type Slide = { image: string; badge: string; title: string; text: string; button: string; productId: string };
+
+function HeroSlider({ slides, onClick }: { slides: Slide[]; onClick: (productId: string) => void }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const t = setInterval(() => setI((x) => (x + 1) % slides.length), 6000);
+    return () => clearInterval(t);
+  }, [slides.length]);
+  const idx = i % Math.max(1, slides.length);
+  return (
+    <section className="relative h-[78vh] max-h-[720px] overflow-hidden">
+      {slides.map((s, k) => {
+        const src = media(s.image);
+        return (
+          <div key={k} className={`absolute inset-0 transition-opacity duration-700 ${k === idx ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+            {isVideo(src)
+              ? <video src={src} autoPlay muted loop playsInline className="h-full w-full object-cover" />
+              : src ? <img src={src} alt={s.title} width={1280} height={1280} className="h-full w-full object-cover" /> : <div className="h-full w-full bg-muted" />}
+            <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-6 pb-12 text-center text-primary-foreground md:text-left">
+              {s.badge && <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground">{s.badge}</span>}
+              <h1 className="mt-4 whitespace-pre-line text-5xl font-semibold leading-[1.05] md:text-7xl">{s.title}</h1>
+              {s.text && <p className="mx-auto mt-3 max-w-md text-base opacity-90 md:mx-0">{s.text}</p>}
+              {s.button && (
+                <button onClick={() => onClick(s.productId)} className="mt-6 w-full rounded-full bg-primary-foreground px-8 py-4 font-semibold text-foreground shadow-lg transition active:scale-95 md:w-auto">
+                  {s.button}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      {slides.length > 1 && (
+        <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+          {slides.map((_, k) => (
+            <button key={k} aria-label={`Capa ${k + 1}`} onClick={() => setI(k)} className={`h-2 rounded-full bg-primary-foreground transition-all ${k === idx ? "w-6" : "w-2 opacity-50"}`} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 const SiteCtx = createContext<SiteContent>(defaultContent);
 const ReviewsCtx = createContext<ReviewRow[]>([]);
@@ -116,18 +161,13 @@ function Store() {
       </header>
 
       {/* Hero */}
-      <section className="relative">
-        <img src={media(site.heroImage)} alt={site.heroTitle} width={1280} height={1280} className="h-[78vh] max-h-[720px] w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-6 pb-10 text-center text-primary-foreground md:text-left">
-          <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground">{site.heroBadge}</span>
-          <h1 className="mt-4 text-5xl font-semibold leading-[1.05] md:text-7xl whitespace-pre-line">{site.heroTitle}</h1>
-          <p className="mx-auto mt-3 max-w-md text-base opacity-90 md:mx-0">{site.heroText}</p>
-          <button onClick={() => { const hp = products.find((p) => p.id === site.heroProductId); if (hp) setDetail(hp); else goCatalog("todos"); }} className="mt-6 w-full rounded-full bg-primary-foreground px-8 py-4 font-semibold text-foreground shadow-lg transition active:scale-95 md:w-auto">
-            {site.heroButton}
-          </button>
-        </div>
-      </section>
+      <HeroSlider
+        slides={[
+          { image: site.heroImage, badge: site.heroBadge, title: site.heroTitle, text: site.heroText, button: site.heroButton, productId: site.heroProductId },
+          ...(site.heroSlides ?? []).filter((s) => s.image || s.title),
+        ]}
+        onClick={(pid) => { const hp = products.find((p) => p.id === pid); if (hp) setDetail(hp); else goCatalog("todos"); }}
+      />
 
       {promo.enabled && promo.showBanner && (
         <section className="bg-foreground px-4 py-6 text-center text-background">

@@ -6,7 +6,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { mergeContent, media, uploadMedia, type CategoryRow, type ProductRow, type SiteContent, type ReviewRow } from "@/lib/site";
 import { brl } from "@/lib/store";
-import { LogOut, Upload, Trash2, Plus, ExternalLink, LayoutDashboard, ShoppingCart, Package, Tags, Home, Palette, Store, UserCog, Eye, TrendingUp, Wallet, Menu, X, Film, Phone, Bell, Star, Percent, Check } from "lucide-react";
+import { LogOut, Upload, Trash2, Plus, ExternalLink, LayoutDashboard, ShoppingCart, Package, Tags, Home, Palette, Store, UserCog, Eye, TrendingUp, Wallet, Menu, X, Film, Phone, Bell, Star, Percent, Check, Bot, BookOpen } from "lucide-react";
+import { Assistant, Manual } from "@/components/admin-extras";
+import { isVideo } from "@/lib/media-kind";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -98,6 +100,8 @@ const TABS = [
   { id: "aparencia", label: "Aparência", icon: Palette, group: "Site" },
   { id: "loja", label: "Loja", icon: Store, group: "Site" },
   { id: "conta", label: "Conta", icon: UserCog, group: "Site" },
+  { id: "assistente", label: "Assistente IA", icon: Bot, group: "Ajuda" },
+  { id: "manual", label: "Manual", icon: BookOpen, group: "Ajuda" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 const MOBILE_MAIN: Tab[] = ["geral", "pedidos", "produtos"];
@@ -109,7 +113,7 @@ function Panel({ email }: { email: string }) {
   const signOut = async () => { await qc.cancelQueries(); qc.clear(); await supabase.auth.signOut(); };
   const current = TABS.find((t) => t.id === tab)!;
   const go = (t: Tab) => { setTab(t); setMore(false); window.scrollTo({ top: 0 }); };
-  const groups = ["Gestão", "Catálogo", "Site"];
+  const groups = ["Gestão", "Catálogo", "Site", "Ajuda"];
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-card p-4 md:flex">
@@ -159,6 +163,8 @@ function Panel({ email }: { email: string }) {
           {tab === "avaliacoes" && <Reviews />}
           {tab === "avisos" && <Notices />}
           {tab === "conta" && <Account email={email} />}
+          {tab === "assistente" && <Assistant />}
+          {tab === "manual" && <Manual />}
         </main>
       </div>
 
@@ -324,17 +330,18 @@ function Orders() {
 }
 
 /* ---------------- Media input ---------------- */
-function MediaInput({ value, onChange, video }: { value: string; onChange: (v: string) => void; video?: boolean }) {
+function MediaInput({ value, onChange, video, any }: { value: string; onChange: (v: string) => void; video?: boolean; any?: boolean }) {
   const [busy, setBusy] = useState(false);
   const src = media(value);
+  const showVideo = video || (any && isVideo(src));
   return (
     <div className="flex items-start gap-3">
-      {src ? (video ? <video src={src} muted className="h-20 w-20 rounded-lg bg-muted object-cover" /> : <img src={src} alt="" className="h-20 w-20 rounded-lg bg-muted object-cover" />)
+      {src ? (showVideo ? <video src={src} muted className="h-20 w-20 rounded-lg bg-muted object-cover" /> : <img src={src} alt="" className="h-20 w-20 rounded-lg bg-muted object-cover" />)
         : <div className="h-20 w-20 rounded-lg bg-muted" />}
       <div className="flex-1 space-y-2">
         <label className={`${btnGhost} cursor-pointer`}>
-          <Upload className="h-4 w-4" /> {busy ? "Enviando…" : video ? "Trocar vídeo" : "Trocar foto"}
-          <input type="file" hidden accept={video ? "video/*" : "image/*"} disabled={busy} onChange={async (e) => {
+          <Upload className="h-4 w-4" /> {busy ? "Enviando…" : any ? "Trocar foto ou vídeo" : video ? "Trocar vídeo" : "Trocar foto"}
+          <input type="file" hidden accept={any ? "image/*,video/*" : video ? "video/*" : "image/*"} disabled={busy} onChange={async (e) => {
             const f = e.target.files?.[0]; if (!f) return;
             setBusy(true);
             try { onChange(await uploadMedia(f)); toast.success("Arquivo enviado. Lembre de salvar."); }
@@ -639,9 +646,9 @@ function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" |
   return (
     <>
       <Card title="Faixa do topo"><div className="grid gap-3">{txt("topbar", "Texto")}</div></Card>
-      <Card title="Destaque principal (foto grande)">
+      <Card title="Capa principal (foto grande do topo)">
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="md:col-span-2"><Field label="Foto de fundo"><MediaInput value={c.heroImage} onChange={(v) => set("heroImage", v)} /></Field></div>
+          <div className="md:col-span-2"><Field label="Foto ou vídeo de fundo"><MediaInput any value={c.heroImage} onChange={(v) => set("heroImage", v)} /></Field></div>
           {txt("heroBadge", "Selo")}
           {txt("heroButton", "Texto do botão")}
           {txt("heroTitle", "Título (Enter quebra linha)", true)}
@@ -652,6 +659,32 @@ function ContentEditor({ section }: { section: "pagina" | "aparencia" | "loja" |
               {(products ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </Field>
+        </div>
+      </Card>
+      <Card title="Outras capas (trocam sozinhas)" right={<button className={btnGhost} onClick={() => set("heroSlides", [...(c.heroSlides ?? []), { image: "", badge: "", title: "", text: "", button: "Ver produto", productId: "" }])}><Plus className="h-4 w-4" /> Adicionar capa</button>}>
+        {(c.heroSlides ?? []).length === 0 && <p className="text-xs text-muted-foreground">Nenhuma capa extra. Toque em “Adicionar capa” para criar outra igual à principal.</p>}
+        <div className="space-y-3">
+          {(c.heroSlides ?? []).map((sl, i) => {
+            const up = (patch: Partial<typeof sl>) => set("heroSlides", c.heroSlides.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+            return (
+              <div key={i} className="rounded-xl bg-muted/50 p-3">
+                <div className="mb-2 flex items-center justify-between"><p className="text-sm font-bold">Capa {i + 2}</p><button aria-label="Remover capa" className={btnGhost} onClick={() => set("heroSlides", c.heroSlides.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></button></div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="md:col-span-2"><Field label="Foto ou vídeo de fundo"><MediaInput any value={sl.image} onChange={(v) => up({ image: v })} /></Field></div>
+                  <Field label="Selo"><input className={inputCls} value={sl.badge} onChange={(e) => up({ badge: e.target.value })} /></Field>
+                  <Field label="Texto do botão (vazio = sem botão)"><input className={inputCls} value={sl.button} onChange={(e) => up({ button: e.target.value })} /></Field>
+                  <Field label="Título"><textarea className={inputCls} rows={2} value={sl.title} onChange={(e) => up({ title: e.target.value })} /></Field>
+                  <Field label="Texto"><textarea className={inputCls} rows={2} value={sl.text} onChange={(e) => up({ text: e.target.value })} /></Field>
+                  <Field label="Produto aberto pelo botão">
+                    <select className={inputCls} value={sl.productId} onChange={(e) => up({ productId: e.target.value })}>
+                      <option value="">— Ir para o catálogo —</option>
+                      {(products ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </Field>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </Card>
       <Card title="Benefícios (3 ícones)"><ListEditor items={c.benefits} fields={[["t", "Título"], ["s", "Texto"]]} onChange={(v) => set("benefits", v)} /></Card>

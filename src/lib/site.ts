@@ -27,6 +27,8 @@ export const defaultContent = {
   heroText: "Sete fragrâncias exclusivas por apenas R$ 89,90.",
   heroButton: "Comprar agora",
   heroProductId: "body-splash",
+  /** Extra cover slides shown after the main one (rotate automatically). */
+  heroSlides: [] as { image: string; badge: string; title: string; text: string; button: string; productId: string }[],
   benefits: [
     { t: "Atendimento", s: "via WhatsApp" },
     { t: "Entrega", s: "em toda a cidade" },
