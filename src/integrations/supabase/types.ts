@@ -42,6 +42,7 @@ export type Database = {
           id: string
           items: Json
           status: string
+          stock_applied: boolean
           total: number
         }
         Insert: {
@@ -50,6 +51,7 @@ export type Database = {
           id?: string
           items?: Json
           status?: string
+          stock_applied?: boolean
           total?: number
         }
         Update: {
@@ -58,6 +60,7 @@ export type Database = {
           id?: string
           items?: Json
           status?: string
+          stock_applied?: boolean
           total?: number
         }
         Relationships: []
@@ -89,11 +92,13 @@ export type Database = {
           featured: boolean
           id: string
           image: string
+          images: Json
           name: string
           old_price: number | null
           price: number
           sort: number
           stock: number | null
+          video: string
           visible: boolean
         }
         Insert: {
@@ -104,11 +109,13 @@ export type Database = {
           featured?: boolean
           id?: string
           image?: string
+          images?: Json
           name: string
           old_price?: number | null
           price?: number
           sort?: number
           stock?: number | null
+          video?: string
           visible?: boolean
         }
         Update: {
@@ -119,11 +126,13 @@ export type Database = {
           featured?: boolean
           id?: string
           image?: string
+          images?: Json
           name?: string
           old_price?: number | null
           price?: number
           sort?: number
           stock?: number | null
+          video?: string
           visible?: boolean
         }
         Relationships: []
@@ -177,6 +186,10 @@ export type Database = {
         Returns: boolean
       }
       place_order: { Args: { _customer: Json; _items: Json }; Returns: string }
+      set_order_status: {
+        Args: { _id: string; _status: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
