@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          read: boolean
+          title: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          read?: boolean
+          title?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          read?: boolean
+          title?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -137,6 +164,48 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          name: string
+          order_id: string
+          photos: Json
+          product_id: string
+          rating: number
+          replied_at: string | null
+          reply: string
+          visible: boolean
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order_id: string
+          photos?: Json
+          product_id: string
+          rating?: number
+          replied_at?: string | null
+          reply?: string
+          visible?: boolean
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order_id?: string
+          photos?: Json
+          product_id?: string
+          rating?: number
+          replied_at?: string | null
+          reply?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           key: string
@@ -185,10 +254,33 @@ export type Database = {
         }
         Returns: boolean
       }
+      notify: {
+        Args: { _body: string; _kind: string; _title: string }
+        Returns: undefined
+      }
       place_order: { Args: { _customer: Json; _items: Json }; Returns: string }
+      reviewable_products: {
+        Args: { _phone: string }
+        Returns: {
+          name: string
+          order_id: string
+          product_id: string
+        }[]
+      }
       set_order_status: {
         Args: { _id: string; _status: string }
         Returns: undefined
+      }
+      site_cfg: { Args: never; Returns: Json }
+      submit_review: {
+        Args: {
+          _body: string
+          _phone: string
+          _photos: Json
+          _product_id: string
+          _rating: number
+        }
+        Returns: string
       }
     }
     Enums: {
