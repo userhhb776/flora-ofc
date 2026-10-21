@@ -252,7 +252,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
       </Card>
       <Card title="Pedidos recentes" right={<button className="text-xs font-semibold text-primary underline" onClick={() => go("pedidos")}>Ver todos</button>}>
         {data.orders.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum pedido ainda.</p> :
-          data.orders.map((o) => <OrderRow key={o.id} o={o as OrderT} />)}
+          data.orders.map((o) => <OrderRow key={o.id} o={o as unknown as OrderT} />)}
       </Card>
     </>
   );

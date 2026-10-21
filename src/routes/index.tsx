@@ -454,7 +454,7 @@ function Overlay({ open, onClose, side, children }: { open: boolean; onClose: ()
   );
 }
 
-function StockTag({ stock }: { stock?: number | null }) {
+function StockTag({ stock }: { stock?: number | null | undefined }) {
   if (stock == null) return null;
   if (stock <= 0) return <span className="mt-1 text-[11px] font-semibold text-destructive">Esgotado</span>;
   return <span className={`mt-1 block text-[11px] font-semibold ${stock <= 3 ? "text-destructive" : "text-primary"}`}>{stock <= 3 ? `Últimas ${stock} unidades` : `${stock} em estoque`}</span>;
