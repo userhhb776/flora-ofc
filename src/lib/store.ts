@@ -29,6 +29,8 @@ export type Product = {
   image: string;
   badge?: string;
   description: string;
+  stock?: number | null;
+  featured?: boolean;
 };
 
 export const products: Product[] = [
@@ -68,14 +70,14 @@ export type Customer = {
 export const cartTotal = (lines: CartLine[]) =>
   Math.round(lines.reduce((s, l) => s + l.product.price * l.qty, 0) * 100) / 100;
 
-export function buildOrderMessage(lines: CartLine[], c: Customer) {
+export function buildOrderMessage(lines: CartLine[], c: Customer, address: string = ADDRESS) {
   const items = lines
     .map((l) => `• ${l.qty}x ${l.product.name} — ${brl(l.product.price * l.qty)}`)
     .join("\n");
   const where =
     c.delivery === "entrega"
       ? `🚚 *Entrega em:* ${c.address}`
-      : `🏬 *Retirada na loja:* ${ADDRESS}`;
+      : `🏬 *Retirada na loja:* ${address}`;
   return [
     "Olá, Flora Pura! 🌿 Quero fazer um pedido:",
     "",
@@ -93,5 +95,5 @@ export function buildOrderMessage(lines: CartLine[], c: Customer) {
     .trim();
 }
 
-export const whatsappLink = (text: string) =>
-  `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
+export const whatsappLink = (text: string, number: string = WHATSAPP) =>
+  `https://wa.me/${number.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
