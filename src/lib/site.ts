@@ -80,6 +80,7 @@ export type SiteContent = typeof defaultContent;
 export type ProductRow = {
   id: string; name: string; category: string; price: number; old_price: number | null; image: string;
   badge: string | null; description: string; stock: number | null; featured: boolean; visible: boolean; sort: number;
+  images: string[]; video: string;
 };
 export type CategoryRow = { id: string; label: string; image: string; sort: number };
 
@@ -87,6 +88,7 @@ export const rowToProduct = (r: ProductRow): Product => ({
   id: r.id, name: r.name, category: r.category as Product["category"], price: Number(r.price),
   ...(r.old_price != null ? { oldPrice: Number(r.old_price) } : {}), image: media(r.image),
   ...(r.badge ? { badge: r.badge } : {}), description: r.description, stock: r.stock, featured: r.featured,
+  images: [r.image, ...(Array.isArray(r.images) ? r.images : [])].filter(Boolean).map((x) => media(x)), video: media(r.video),
 });
 
 const fallback = {
