@@ -68,25 +68,29 @@ export type Customer = {
   address: string;
   payment: string;
   notes: string;
+  coupon?: string;
 };
 
 export const cartTotal = (lines: CartLine[]) =>
   Math.round(lines.reduce((s, l) => s + l.product.price * l.qty, 0) * 100) / 100;
 
-export function buildOrderMessage(lines: CartLine[], c: Customer, address: string = ADDRESS) {
+export function buildOrderMessage(lines: CartLine[], c: Customer, address: string = ADDRESS, discount = 0) {
+  const sub = cartTotal(lines);
+  const final = Math.round(sub * (1 - discount / 100) * 100) / 100;
   const items = lines
     .map((l) => `• ${l.qty}x ${l.product.name} — ${brl(l.product.price * l.qty)}`)
     .join("\n");
   const where =
     c.delivery === "entrega"
-      ? `🚚 *Entrega em:* ${c.address}`
+      ? c.address ? `🚚 *Entrega em:* ${c.address}` : "🚚 *Entrega* (endereço combinado pelo WhatsApp)"
       : `🏬 *Retirada na loja:* ${address}`;
   return [
     "Olá, Flora Pura! 🌿 Quero fazer um pedido:",
     "",
     items,
     "",
-    `*Total:* ${brl(cartTotal(lines))}`,
+    ...(discount > 0 ? [`Subtotal: ${brl(sub)}`, `🏷️ *Cupom ${c.coupon}:* -${discount}%`] : []),
+    `*Total:* ${brl(final)}`,
     "",
     `👤 *Nome:* ${c.name}`,
     c.phone ? `📱 *WhatsApp:* ${c.phone}` : "",
