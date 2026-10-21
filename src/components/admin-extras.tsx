@@ -23,7 +23,7 @@ function splitActions(text: string): { body: string; actions: Action[] } {
   const m = text.match(/```acoes\s*([\s\S]*?)```/);
   if (!m) return { body: text, actions: [] };
   try {
-    const parsed = JSON.parse(m[1]);
+    const parsed = JSON.parse(m[1] ?? "[]");
     return { body: text.replace(m[0], "").trim(), actions: Array.isArray(parsed) ? parsed : [] };
   } catch {
     return { body: text, actions: [] };
@@ -67,7 +67,7 @@ export function Assistant() {
       for (const a of actions) {
         if (a.tipo === "produto") {
           const campos = Object.fromEntries(Object.entries(a.campos ?? {}).filter(([k]) => PRODUCT_FIELDS.includes(k)));
-          const { error } = await supabase.from("products").update(campos).eq("id", a.id);
+          const { error } = await supabase.from("products").update(campos as never).eq("id", a.id);
           if (error) throw error;
         } else if (a.tipo === "texto" && typeof a.valor === "string") {
           const { data } = await supabase.from("site_settings").select("value").eq("key", "content").maybeSingle();
