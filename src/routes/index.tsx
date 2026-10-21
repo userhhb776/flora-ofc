@@ -241,8 +241,8 @@ function Store() {
       {/* Floating cart bar (mobile) */}
       <MobileBar />
       <a href={wa("Olá!")} target="_blank" rel="noreferrer" aria-label="WhatsApp"
-        className="fixed bottom-6 right-6 z-30 hidden h-14 w-14 place-items-center rounded-full bg-whatsapp text-whatsapp-foreground shadow-xl md:grid">
-        <MessageCircle className="h-7 w-7" />
+        className={`fixed right-4 z-30 grid h-12 w-12 place-items-center rounded-full bg-whatsapp text-whatsapp-foreground shadow-xl transition active:scale-95 md:bottom-6 md:right-6 md:h-14 md:w-14 ${count ? "bottom-24" : "bottom-5"}`}>
+        <WhatsIcon className="h-6 w-6 md:h-7 md:w-7" />
       </a>
 
       <ProductSheet p={detail} onClose={() => setDetail(null)} />
@@ -259,6 +259,7 @@ function ProductCard({ p, onOpen }: { p: Product; onOpen: () => void }) {
     <article className="flex flex-col text-center">
       <button onClick={onOpen} className="relative overflow-hidden rounded-2xl bg-muted">
         <img src={p.image} alt={p.name} loading="lazy" className="aspect-[4/5] w-full object-cover transition duration-500 hover:scale-105" />
+        {p.video && <span className="absolute bottom-2 right-2 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-bold">▶ Vídeo</span>}
         {p.badge && <span className="absolute left-2 top-2 rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">{p.badge}</span>}
       </button>
       <button onClick={onOpen} className="mt-3 line-clamp-2 min-h-10 text-sm font-semibold leading-tight">{p.name}</button>
@@ -268,6 +269,7 @@ function ProductCard({ p, onOpen }: { p: Product; onOpen: () => void }) {
         <span className="font-bold">{brl(p.price)}</span>
       </div>
       <span className="text-[11px] text-muted-foreground">ou {brl(p.price / 3)} em 3x</span>
+      <StockTag stock={p.stock} />
       <button disabled={out} onClick={() => add(p)} className="mt-3 rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition active:scale-95 disabled:opacity-50">
         {out ? "Esgotado" : "Adicionar"}
       </button>
@@ -278,12 +280,27 @@ function ProductCard({ p, onOpen }: { p: Product; onOpen: () => void }) {
 function ProductSheet({ p, onClose }: { p: Product | null; onClose: () => void }) {
   const { add } = useCart();
   const [qty, setQty] = useState(1);
-  useEffect(() => setQty(1), [p]);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => { setQty(1); setIdx(0); }, [p]);
+  const gallery = p ? [...(p.images?.length ? p.images : [p.image]).map((src) => ({ src, v: false })), ...(p.video ? [{ src: p.video, v: true }] : [])] : [];
+  const cur = gallery[idx] ?? gallery[0];
+  const max = p?.stock ?? 999;
   return (
     <Overlay open={!!p} onClose={onClose} side="bottom">
       {p && (
         <div className="flex flex-col">
-          <img src={p.image} alt={p.name} className="aspect-square w-full object-cover md:aspect-[4/3]" />
+          {cur?.v
+            ? <video key={cur.src} src={cur.src} autoPlay muted loop playsInline controls className="aspect-square w-full bg-muted object-cover md:aspect-[4/3]" />
+            : <img src={cur?.src} alt={p.name} className="aspect-square w-full object-cover md:aspect-[4/3]" />}
+          {gallery.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none]">
+              {gallery.map((g, i) => (
+                <button key={i} aria-label={`Mídia ${i + 1}`} onClick={() => setIdx(i)} className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-2 ${i === idx ? "ring-primary" : "ring-transparent"}`}>
+                  {g.v ? <><video src={g.src} muted className="h-full w-full object-cover" /><span className="absolute inset-0 grid place-items-center bg-foreground/30 text-xs font-bold text-background">▶</span></> : <img src={g.src} alt="" className="h-full w-full object-cover" />}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="p-6 text-center">
             {p.badge && <span className="text-xs font-bold uppercase tracking-wider text-primary">{p.badge}</span>}
             <h3 className="mt-1 text-2xl font-semibold">{p.name}</h3>
@@ -291,9 +308,10 @@ function ProductSheet({ p, onClose }: { p: Product | null; onClose: () => void }
               {p.oldPrice && <span className="text-sm text-muted-foreground line-through">{brl(p.oldPrice)}</span>}
               <span className="text-2xl font-bold">{brl(p.price)}</span>
             </div>
+            <StockTag stock={p.stock} />
             <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">{p.description}</p>
             <div className="mt-6 flex items-center justify-center gap-3">
-              <Qty qty={qty} setQty={(n) => setQty(Math.max(1, n))} />
+              <Qty qty={qty} setQty={(n) => setQty(Math.max(1, Math.min(max, n)))} />
               <button disabled={p.stock === 0} onClick={() => { add(p, qty); onClose(); }} className="flex-1 disabled:opacity-50 rounded-full bg-primary py-3.5 font-semibold text-primary-foreground active:scale-95">
                 {p.stock === 0 ? "Esgotado" : `Adicionar • ${brl(p.price * qty)}`}
               </button>
@@ -309,9 +327,10 @@ function CartDrawer() {
   const { lines, open, setOpen, setQty, clear } = useCart();
   const site = useSite();
   const payments = site.payments.split(",").map((x) => x.trim()).filter(Boolean);
-  const [c, setC] = useState<Customer>({ name: "", delivery: "entrega", address: "", payment: "Pix", notes: "" });
+  const [c, setC] = useState<Customer>({ name: "", phone: "", delivery: "entrega", address: "", payment: "Pix", notes: "" });
   const total = cartTotal(lines);
-  const valid = c.name.trim() && (c.delivery === "retirada" || c.address.trim());
+  const phoneOk = (c.phone ?? "").replace(/\D/g, "").length >= 10;
+  const valid = c.name.trim() && phoneOk && (c.delivery === "retirada" || c.address.trim());
   const input = "w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring";
 
   const send = () => {
@@ -351,7 +370,10 @@ function CartDrawer() {
               ))}
               <div className="space-y-3 border-t border-border pt-5">
                 <p className="text-sm font-semibold">Dados para o pedido</p>
-                <input className={input} placeholder="Seu nome" value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} />
+                <label className="block space-y-1"><span className="text-sm font-semibold">Seu nome</span>
+                  <input className={input} value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} /></label>
+                <label className="block space-y-1"><span className="text-sm font-semibold">Telefone / WhatsApp</span>
+                  <input className={input} type="tel" inputMode="tel" placeholder="(35) 9...." value={c.phone} onChange={(e) => setC({ ...c, phone: e.target.value })} /></label>
                 <div className="grid grid-cols-2 gap-2">
                   {(["entrega", "retirada"] as const).map((d) => (
                     <button key={d} onClick={() => setC({ ...c, delivery: d })}
@@ -368,15 +390,17 @@ function CartDrawer() {
                 <select className={input} value={c.payment} onChange={(e) => setC({ ...c, payment: e.target.value })}>
                   {payments.map((o) => <option key={o}>{o}</option>)}
                 </select>
-                <input className={input} placeholder="Observações (opcional)" value={c.notes} onChange={(e) => setC({ ...c, notes: e.target.value })} />
+                <label className="block space-y-1"><span className="text-sm font-semibold">Observações (opcional)</span>
+                  <textarea className={input} rows={3} value={c.notes} onChange={(e) => setC({ ...c, notes: e.target.value })} /></label>
               </div>
             </div>
             <div className="border-t border-border p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-              <div className="mb-3 flex justify-between text-lg"><span>Total</span><strong>{brl(total)}</strong></div>
+              <div className="mb-3 flex justify-between text-lg"><span>Subtotal ({lines.reduce((s, l) => s + l.qty, 0)} itens)</span><strong>{brl(total)}</strong></div>
               <button disabled={!valid} onClick={send} className="flex w-full items-center justify-center gap-2 rounded-full bg-whatsapp py-4 font-semibold text-whatsapp-foreground transition active:scale-95 disabled:opacity-50">
-                <MessageCircle className="h-5 w-5" /> Finalizar pelo WhatsApp
+                <WhatsIcon className="h-5 w-5" /> Enviar pedido pelo WhatsApp
               </button>
-              {!valid && <p className="mt-2 text-center text-xs text-muted-foreground">Preencha seu nome{c.delivery === "entrega" ? " e endereço" : ""} para finalizar.</p>}
+              <button onClick={() => setOpen(false)} className="mt-2 w-full py-2 text-sm text-muted-foreground">Continuar comprando (a sacola fica salva)</button>
+              {!valid && <p className="mt-2 text-center text-xs text-muted-foreground">Preencha nome, WhatsApp{c.delivery === "entrega" ? " e endereço" : ""} para finalizar.</p>}
             </div>
           </>
         )}
@@ -427,5 +451,19 @@ function Overlay({ open, onClose, side, children }: { open: boolean; onClose: ()
         {children}
       </div>
     </>
+  );
+}
+
+function StockTag({ stock }: { stock?: number | null | undefined }) {
+  if (stock == null) return null;
+  if (stock <= 0) return <span className="mt-1 text-[11px] font-semibold text-destructive">Esgotado</span>;
+  return <span className={`mt-1 block text-[11px] font-semibold ${stock <= 3 ? "text-destructive" : "text-primary"}`}>{stock <= 3 ? `Últimas ${stock} unidades` : `${stock} em estoque`}</span>;
+}
+
+function WhatsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35M12.05 21.5h-.01a9.4 9.4 0 0 1-4.8-1.32l-.34-.2-3.57.94.95-3.48-.22-.36a9.4 9.4 0 0 1-1.44-5.02c0-5.2 4.23-9.43 9.44-9.43a9.4 9.4 0 0 1 9.43 9.44c0 5.2-4.24 9.43-9.44 9.43m8.02-17.46A11.27 11.27 0 0 0 12.05.72C5.8.72.7 5.8.7 12.06c0 2 .52 3.95 1.52 5.67L.6 23.6l6.02-1.58a11.3 11.3 0 0 0 5.42 1.38h.01c6.25 0 11.34-5.09 11.35-11.34 0-3.03-1.18-5.88-3.33-8.02"/>
+    </svg>
   );
 }

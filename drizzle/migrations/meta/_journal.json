@@ -8,6 +8,13 @@
       "when": 1792611518671,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792614206774,
+      "tag": "0001_product_gallery_stock_on_confirm",
+      "breakpoints": true
     }
   ]
 }

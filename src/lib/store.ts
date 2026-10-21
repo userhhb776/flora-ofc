@@ -31,6 +31,8 @@ export type Product = {
   description: string;
   stock?: number | null;
   featured?: boolean;
+  images?: string[];
+  video?: string;
 };
 
 export const products: Product[] = [
@@ -61,6 +63,7 @@ export const brl = (n: number) =>
 export type CartLine = { product: Product; qty: number };
 export type Customer = {
   name: string;
+  phone?: string;
   delivery: "entrega" | "retirada";
   address: string;
   payment: string;
@@ -86,6 +89,7 @@ export function buildOrderMessage(lines: CartLine[], c: Customer, address: strin
     `*Total:* ${brl(cartTotal(lines))}`,
     "",
     `👤 *Nome:* ${c.name}`,
+    c.phone ? `📱 *WhatsApp:* ${c.phone}` : "",
     where,
     `💳 *Pagamento:* ${c.payment}`,
     c.notes ? `📝 *Obs.:* ${c.notes}` : "",
