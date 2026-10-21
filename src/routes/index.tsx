@@ -116,18 +116,13 @@ function Store() {
       </header>
 
       {/* Hero */}
-      <section className="relative">
-        <img src={media(site.heroImage)} alt={site.heroTitle} width={1280} height={1280} className="h-[78vh] max-h-[720px] w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-6 pb-10 text-center text-primary-foreground md:text-left">
-          <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground">{site.heroBadge}</span>
-          <h1 className="mt-4 text-5xl font-semibold leading-[1.05] md:text-7xl whitespace-pre-line">{site.heroTitle}</h1>
-          <p className="mx-auto mt-3 max-w-md text-base opacity-90 md:mx-0">{site.heroText}</p>
-          <button onClick={() => { const hp = products.find((p) => p.id === site.heroProductId); if (hp) setDetail(hp); else goCatalog("todos"); }} className="mt-6 w-full rounded-full bg-primary-foreground px-8 py-4 font-semibold text-foreground shadow-lg transition active:scale-95 md:w-auto">
-            {site.heroButton}
-          </button>
-        </div>
-      </section>
+      <HeroSlider
+        slides={[
+          { image: site.heroImage, badge: site.heroBadge, title: site.heroTitle, text: site.heroText, button: site.heroButton, productId: site.heroProductId },
+          ...(site.heroSlides ?? []).filter((s) => s.image || s.title),
+        ]}
+        onClick={(pid) => { const hp = products.find((p) => p.id === pid); if (hp) setDetail(hp); else goCatalog("todos"); }}
+      />
 
       {promo.enabled && promo.showBanner && (
         <section className="bg-foreground px-4 py-6 text-center text-background">
