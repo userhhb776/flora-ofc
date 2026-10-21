@@ -20,7 +20,7 @@ function HeroSlider({ slides, onClick }: { slides: Slide[]; onClick: (productId:
   }, [slides.length]);
   const idx = i % Math.max(1, slides.length);
   return (
-    <section className="relative h-[46vh] max-h-[440px] overflow-hidden md:h-[58vh] md:max-h-[560px]">
+    <section className="relative aspect-[10/14] max-h-[80vh] w-full overflow-hidden md:aspect-auto md:h-[58vh] md:max-h-[560px]">
       {slides.map((s, k) => {
         const src = media(s.image);
         return (
@@ -29,12 +29,12 @@ function HeroSlider({ slides, onClick }: { slides: Slide[]; onClick: (productId:
               ? <video src={src} autoPlay muted loop playsInline className="h-full w-full object-cover" />
               : src ? <img src={src} alt={s.title} width={1280} height={1280} className="h-full w-full object-cover" /> : <div className="h-full w-full bg-muted" />}
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-6 pb-7 text-center text-primary-foreground md:pb-12 md:text-left">
+            <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-6 pb-9 text-center text-primary-foreground md:pb-12 md:text-left">
               {s.badge && <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground">{s.badge}</span>}
-              <h1 className="mt-3 whitespace-pre-line text-4xl font-semibold leading-[1.05] md:mt-4 md:text-7xl">{s.title}</h1>
-              {s.text && <p className="mx-auto mt-2 max-w-md text-sm opacity-90 md:mx-0 md:mt-3 md:text-base">{s.text}</p>}
+              <h1 className="mt-4 whitespace-pre-line text-5xl font-semibold leading-[1.05] md:text-7xl">{s.title}</h1>
+              {s.text && <p className="mx-auto mt-3 max-w-md text-base opacity-90 md:mx-0">{s.text}</p>}
               {s.button && (
-                <button onClick={() => onClick(s.productId)} className="mt-4 w-full rounded-full bg-primary-foreground px-8 py-3 font-semibold text-foreground shadow-lg transition active:scale-95 md:mt-6 md:w-auto md:py-4">
+                <button onClick={() => onClick(s.productId)} className="mt-5 w-full rounded-full bg-primary-foreground px-8 py-4 font-semibold text-foreground shadow-lg transition active:scale-95 md:mt-6 md:w-auto">
                   {s.button}
                 </button>
               )}
