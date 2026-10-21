@@ -457,7 +457,7 @@ function Gallery({ main, extra, onChange }: { main: string; extra: string[]; onC
         <input type="file" hidden multiple accept="image/*" disabled={busy} onChange={async (e) => {
           const files = Array.from(e.target.files ?? []); if (!files.length) return;
           setBusy(true);
-          try { const urls = await Promise.all(files.map(uploadMedia)); update([...all, ...urls]); toast.success("Fotos enviadas. Lembre de salvar."); }
+          try { const urls = await Promise.all(files.map((f) => uploadMedia(f))); update([...all, ...urls]); toast.success("Fotos enviadas. Lembre de salvar."); }
           catch { toast.error("Não foi possível enviar as fotos."); }
           setBusy(false); e.target.value = "";
         }} />
