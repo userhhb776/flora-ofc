@@ -19,6 +19,6 @@ describe("pedido WhatsApp", () => {
   });
   it("aplica cupom de 10% no total", () => {
     const msg = buildOrderMessage(lines, { name: "Ana", delivery: "retirada", address: "", payment: "Pix", notes: "", coupon: "BLACK10" }, undefined, 10);
-    expect(msg).toContain("R$ 206,73");
+    expect(msg).toMatch(/Total:\* R\$\s206,73/);
   });
 });
