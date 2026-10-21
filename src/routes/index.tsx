@@ -1,13 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ShoppingBag, Search, X, Minus, Plus, MapPin, Leaf, Truck, MessageCircle, Instagram, Star } from "lucide-react";
+import { ShoppingBag, Search, X, Minus, Plus, MapPin, Leaf, Truck, MessageCircle, Instagram, Star, Camera, LayoutGrid } from "lucide-react";
 import { CartProvider, useCart } from "@/lib/cart";
 import { brl, buildOrderMessage, cartTotal, whatsappLink, type Category, type Customer, type Product } from "@/lib/store";
-import { media, useSiteData, defaultContent, type SiteContent } from "@/lib/site";
+import { media, useSiteData, defaultContent, uploadMedia, type SiteContent, type ReviewRow } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 import { createContext, useContext, type CSSProperties } from "react";
 
 const SiteCtx = createContext<SiteContent>(defaultContent);
+const ReviewsCtx = createContext<ReviewRow[]>([]);
+const useReviews = (id?: string) => { const all = useContext(ReviewsCtx); return id ? all.filter((r) => r.product_id === id) : all; };
+const BF_VARS = {
+  "--background": "#0c0c0c", "--foreground": "#f6f6f6", "--card": "#171717", "--card-foreground": "#f6f6f6",
+  "--muted": "#222222", "--muted-foreground": "#a3a3a3", "--border": "#2e2e2e", "--input": "#3a3a3a",
+  "--primary": "#f5c400", "--primary-foreground": "#0c0c0c", "--accent": "#e11d48", "--accent-foreground": "#ffffff",
+  "--secondary": "#161616", "--secondary-foreground": "#f6f6f6", "--ring": "#f5c400",
+};
 const useSite = () => useContext(SiteCtx);
 
 export const Route = createFileRoute("/")({
@@ -33,11 +41,15 @@ function Store() {
   const site = data!.content;
   const categories = data!.categories;
   const products = data!.products;
+  const reviews = data!.reviews;
+  const promo = site.promo;
+  const [reviewOpen, setReviewOpen] = useState(false);
   const { count, setOpen } = useCart();
   useEffect(() => { supabase.from("page_views").insert({ path: "/" }).then(() => {}); }, []);
   const colorVars = Object.fromEntries(
     Object.entries(site.colors).filter(([, v]) => v).map(([k, v]) => [`--${k}`, v]),
   ) as CSSProperties;
+  const themeVars = { ...colorVars, ...(promo.enabled && promo.darkTheme ? BF_VARS : {}) } as CSSProperties;
   const wa = (t: string) => whatsappLink(t, site.whatsapp);
   const [cat, setCat] = useState<Category | "todos">("todos");
   const [q, setQ] = useState("");
@@ -60,10 +72,19 @@ function Store() {
 
   return (
     <SiteCtx.Provider value={site}>
-    <div style={colorVars} className="min-h-screen bg-background text-foreground pb-24 md:pb-0">
-      <div className="bg-primary py-2 text-center text-xs font-semibold tracking-wide text-primary-foreground">
-        {site.topbar}
-      </div>
+    <ReviewsCtx.Provider value={reviews}>
+    <div style={themeVars} className="min-h-screen bg-background text-foreground pb-24 md:pb-0">
+      {promo.enabled && promo.marquee && promo.marqueeText ? (
+        <div className="overflow-hidden bg-accent py-2 text-xs font-bold uppercase tracking-wider text-accent-foreground">
+          <div className="flex w-max animate-[marquee_22s_linear_infinite] gap-12 whitespace-nowrap">
+            {Array.from({ length: 6 }).map((_, i) => <span key={i}>{promo.marqueeText}</span>)}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-primary py-2 text-center text-xs font-semibold tracking-wide text-primary-foreground">
+          {site.topbar}
+        </div>
+      )}
 
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto grid max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-2 px-4 py-3">
@@ -108,6 +129,23 @@ function Store() {
         </div>
       </section>
 
+      {promo.enabled && promo.showBanner && (
+        <section className="bg-foreground px-4 py-6 text-center text-background">
+          <p className="font-display text-3xl font-black tracking-tight md:text-5xl">{promo.title}</p>
+          {promo.subtitle && <p className="mt-1 text-sm opacity-80">{promo.subtitle}</p>}
+          {promo.coupons.filter((c) => c.code).length > 0 && (
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {promo.coupons.filter((c) => c.code).map((c) => (
+                <button key={c.code} onClick={() => navigator.clipboard?.writeText(c.code)} className="rounded-lg border-2 border-dashed border-primary px-3 py-1.5 text-sm font-bold text-primary">
+                  {c.code} • {c.percent}% OFF
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-[11px] opacity-60">Toque no cupom para copiar e use na sacola</p>
+        </section>
+      )}
+
       {/* Benefits */}
       <section className="mx-auto grid max-w-6xl grid-cols-3 gap-2 px-4 py-6 text-center text-xs md:text-sm">
         {site.benefits.slice(0, 3).map(({ t, s }, idx) => { const I = [MessageCircle, Truck, Leaf][idx] ?? Leaf; return (
@@ -147,11 +185,13 @@ function Store() {
       {/* Catalog */}
       <section id="catalogo" className="mx-auto max-w-6xl scroll-mt-20 py-6">
         <h2 className="px-4 text-center text-3xl font-semibold">{site.catalogTitle}</h2>
-        <div className="sticky top-[68px] z-20 mt-4 flex gap-2 overflow-x-auto bg-background/95 px-4 py-3 backdrop-blur [scrollbar-width:none] md:justify-center">
-          {[{ id: "todos" as const, label: "Todos" }, ...categories].map((c) => (
-            <button key={c.id} onClick={() => setCat(c.id as Category | "todos")}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${cat === c.id ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-              {c.label}
+        <div className="sticky top-[68px] z-20 mt-3 flex snap-x gap-3 overflow-x-auto bg-background/95 px-4 py-3 backdrop-blur [scrollbar-width:none] md:justify-center">
+          {[{ id: "todos", label: "Todos", image: "" }, ...categories].map((c) => (
+            <button key={c.id} onClick={() => setCat(c.id as Category | "todos")} className="flex w-16 shrink-0 snap-center flex-col items-center gap-1 md:w-20">
+              {c.image
+                ? <img src={c.image} alt={c.label} loading="lazy" className={`aspect-square w-full rounded-full object-cover ring-2 transition ${cat === c.id ? "ring-primary ring-offset-2 ring-offset-background" : "ring-border"}`} />
+                : <span className={`grid aspect-square w-full place-items-center rounded-full ring-2 ${cat === c.id ? "bg-primary text-primary-foreground ring-primary ring-offset-2 ring-offset-background" : "bg-muted ring-border"}`}><LayoutGrid className="h-6 w-6" /></span>}
+              <span className={`text-center text-[11px] leading-tight ${cat === c.id ? "font-bold text-primary" : "font-semibold"}`}>{c.label}</span>
             </button>
           ))}
         </div>
@@ -171,21 +211,6 @@ function Store() {
         </div>
       </section>
 
-      {/* How to buy */}
-      <section className="px-4 py-14 text-center">
-        <h2 className="text-3xl font-semibold">{site.howTitle}</h2>
-        <p className="mx-auto mt-2 max-w-sm text-muted-foreground">{site.howSubtitle}</p>
-        <ol className="mx-auto mt-8 grid max-w-4xl gap-6 md:grid-cols-3">
-          {site.steps.map(({ t, s }, i) => [String(i + 1), t, s]).map(([n, t, s]) => (
-            <li key={n} className="flex flex-col items-center gap-2">
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-primary font-display text-xl font-semibold text-primary-foreground">{n}</span>
-              <span className="font-semibold">{t}</span>
-              <span className="max-w-xs text-sm text-muted-foreground">{s}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
-
       {/* About */}
       <section className="bg-accent/20 px-5 py-8 text-center">
         <h2 className="text-xl font-semibold md:text-2xl">{site.aboutTitle}</h2>
@@ -201,14 +226,20 @@ function Store() {
       <section className="bg-secondary py-7">
         <h2 className="px-4 text-center text-xl font-semibold md:text-2xl">{site.reviewsTitle}</h2>
         <div className="mx-auto mt-4 flex max-w-6xl snap-x gap-3 overflow-x-auto px-4 [scrollbar-width:none]">
-          {site.reviews.map(({ n, t }) => (
-            <figure key={n + t} className="w-[75%] shrink-0 snap-center rounded-2xl bg-card p-4 text-center md:w-1/3">
-              <div className="flex justify-center gap-0.5 text-accent">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-3 w-3 fill-current" />)}</div>
-              <blockquote className="mt-2 text-xs">“{t}”</blockquote>
-              <figcaption className="mt-2 text-xs font-semibold">{n}</figcaption>
+          {(site.reviewsEnabled && reviews.length ? reviews.slice(0, 12).map((r) => ({ n: r.name || "Cliente", t: r.body, s: r.rating, ph: r.photos[0], p: products.find((x) => x.id === r.product_id)?.name })) : site.reviews.map((r) => ({ n: r.n, t: r.t, s: 5, ph: "", p: "" }))).map(({ n, t, s: st, ph, p }, i) => (
+            <figure key={i} className="w-[75%] shrink-0 snap-center rounded-2xl bg-card p-4 text-center md:w-1/3">
+              <Stars n={st} className="justify-center" />
+              {ph && <img src={ph} alt="" loading="lazy" className="mx-auto mt-2 h-20 w-20 rounded-lg object-cover" />}
+              {t && <blockquote className="mt-2 text-xs">“{t}”</blockquote>}
+              <figcaption className="mt-2 text-xs font-semibold">{n}{p ? <span className="block font-normal text-muted-foreground">{p}</span> : null}</figcaption>
             </figure>
           ))}
         </div>
+        {site.reviewsEnabled && (
+          <div className="mt-4 text-center">
+            <button onClick={() => setReviewOpen(true)} className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Avaliar minha compra</button>
+          </div>
+        )}
       </section>
 
       {/* FAQ */}
@@ -247,7 +278,9 @@ function Store() {
 
       <ProductSheet p={detail} onClose={() => setDetail(null)} />
       <CartDrawer />
+      <ReviewSheet open={reviewOpen} onClose={() => setReviewOpen(false)} />
     </div>
+    </ReviewsCtx.Provider>
     </SiteCtx.Provider>
   );
 }
@@ -264,6 +297,7 @@ function ProductCard({ p, onOpen }: { p: Product; onOpen: () => void }) {
       </button>
       <button onClick={onOpen} className="mt-3 line-clamp-2 min-h-10 text-sm font-semibold leading-tight">{p.name}</button>
       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{p.description}</p>
+      <RatingLine id={p.id} />
       <div className="mt-1 flex items-baseline justify-center gap-2">
         {p.oldPrice && <span className="text-xs text-muted-foreground line-through">{brl(p.oldPrice)}</span>}
         <span className="font-bold">{brl(p.price)}</span>
@@ -309,6 +343,7 @@ function ProductSheet({ p, onClose }: { p: Product | null; onClose: () => void }
               <span className="text-2xl font-bold">{brl(p.price)}</span>
             </div>
             <StockTag stock={p.stock} />
+            <RatingLine id={p.id} />
             <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">{p.description}</p>
             <div className="mt-6 flex items-center justify-center gap-3">
               <Qty qty={qty} setQty={(n) => setQty(Math.max(1, Math.min(max, n)))} />
@@ -316,6 +351,7 @@ function ProductSheet({ p, onClose }: { p: Product | null; onClose: () => void }
                 {p.stock === 0 ? "Esgotado" : `Adicionar • ${brl(p.price * qty)}`}
               </button>
             </div>
+            <ProductReviews id={p.id} />
           </div>
         </div>
       )}
@@ -330,12 +366,16 @@ function CartDrawer() {
   const [c, setC] = useState<Customer>({ name: "", phone: "", delivery: "entrega", address: "", payment: "Pix", notes: "" });
   const total = cartTotal(lines);
   const phoneOk = (c.phone ?? "").replace(/\D/g, "").length >= 10;
-  const valid = c.name.trim() && phoneOk && (c.delivery === "retirada" || c.address.trim());
+  const valid = c.name.trim() && phoneOk;
+  const coupon = site.promo.enabled ? site.promo.coupons.find((x) => x.code && x.code.trim().toUpperCase() === (c.coupon ?? "").trim().toUpperCase()) : undefined;
+  const discount = coupon ? Math.min(90, Math.max(0, Number(coupon.percent) || 0)) : 0;
+  const finalTotal = Math.round(total * (1 - discount / 100) * 100) / 100;
   const input = "w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring";
 
   const send = () => {
-    window.open(whatsappLink(buildOrderMessage(lines, c, site.address), site.whatsapp), "_blank");
-    supabase.rpc("place_order", { _items: lines.map((l) => ({ id: l.product.id, qty: l.qty })), _customer: c }).then(() => {});
+    const cust = { ...c, address: "", coupon: coupon ? coupon.code.trim().toUpperCase() : "" };
+    window.open(whatsappLink(buildOrderMessage(lines, cust, site.address, discount), site.whatsapp), "_blank");
+    supabase.rpc("place_order", { _items: lines.map((l) => ({ id: l.product.id, qty: l.qty })), _customer: cust }).then(() => {});
     clear();
     setOpen(false);
   };
@@ -382,9 +422,7 @@ function CartDrawer() {
                     </button>
                   ))}
                 </div>
-                {c.delivery === "entrega" ? (
-                  <textarea className={input} rows={2} placeholder="Rua, número, bairro e complemento" value={c.address} onChange={(e) => setC({ ...c, address: e.target.value })} />
-                ) : (
+                {c.delivery === "retirada" && (
                   <p className="flex gap-2 rounded-xl bg-muted p-3 text-xs"><MapPin className="h-4 w-4 shrink-0" />{site.address}</p>
                 )}
                 <select className={input} value={c.payment} onChange={(e) => setC({ ...c, payment: e.target.value })}>
@@ -392,15 +430,21 @@ function CartDrawer() {
                 </select>
                 <label className="block space-y-1"><span className="text-sm font-semibold">Observações (opcional)</span>
                   <textarea className={input} rows={3} value={c.notes} onChange={(e) => setC({ ...c, notes: e.target.value })} /></label>
+                {site.promo.enabled && site.promo.coupons.some((x) => x.code) && (
+                  <label className="block space-y-1"><span className="text-sm font-semibold">Cupom de desconto</span>
+                    <input className={`${input} uppercase`} placeholder="Ex.: BLACK10" value={c.coupon ?? ""} onChange={(e) => setC({ ...c, coupon: e.target.value })} />
+                    {c.coupon && <span className={`text-xs font-semibold ${coupon ? "text-primary" : "text-destructive"}`}>{coupon ? `Cupom aplicado: ${discount}% OFF` : "Cupom inválido"}</span>}
+                  </label>
+                )}
               </div>
             </div>
             <div className="border-t border-border p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-              <div className="mb-3 flex justify-between text-lg"><span>Subtotal ({lines.reduce((s, l) => s + l.qty, 0)} itens)</span><strong>{brl(total)}</strong></div>
+              <div className="mb-3 flex justify-between text-lg"><span>Subtotal ({lines.reduce((s, l) => s + l.qty, 0)} itens)</span><strong>{discount ? <><s className="mr-2 text-sm font-normal text-muted-foreground">{brl(total)}</s>{brl(finalTotal)}</> : brl(total)}</strong></div>
               <button disabled={!valid} onClick={send} className="flex w-full items-center justify-center gap-2 rounded-full bg-whatsapp py-4 font-semibold text-whatsapp-foreground transition active:scale-95 disabled:opacity-50">
                 <WhatsIcon className="h-5 w-5" /> Enviar pedido pelo WhatsApp
               </button>
               <button onClick={() => setOpen(false)} className="mt-2 w-full py-2 text-sm text-muted-foreground">Continuar comprando (a sacola fica salva)</button>
-              {!valid && <p className="mt-2 text-center text-xs text-muted-foreground">Preencha nome, WhatsApp{c.delivery === "entrega" ? " e endereço" : ""} para finalizar.</p>}
+              {!valid && <p className="mt-2 text-center text-xs text-muted-foreground">Preencha nome e WhatsApp para finalizar.</p>}
             </div>
           </>
         )}
@@ -458,6 +502,102 @@ function StockTag({ stock }: { stock?: number | null | undefined }) {
   if (stock == null) return null;
   if (stock <= 0) return <span className="mt-1 text-[11px] font-semibold text-destructive">Esgotado</span>;
   return <span className={`mt-1 block text-[11px] font-semibold ${stock <= 3 ? "text-destructive" : "text-primary"}`}>{stock <= 3 ? `Últimas ${stock} unidades` : `${stock} em estoque`}</span>;
+}
+
+function Stars({ n, className = "", size = "h-3 w-3" }: { n: number; className?: string; size?: string }) {
+  return <div className={`flex gap-0.5 text-accent ${className}`}>{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`${size} ${i < Math.round(n) ? "fill-current" : "opacity-30"}`} />)}</div>;
+}
+
+function RatingLine({ id }: { id: string }) {
+  const site = useSite();
+  const rs = useReviews(id);
+  if (!site.reviewsEnabled || !rs.length) return null;
+  const avg = rs.reduce((s, r) => s + r.rating, 0) / rs.length;
+  return <div className="mt-1 flex items-center justify-center gap-1 text-[11px] text-muted-foreground"><Stars n={avg} /> ({rs.length})</div>;
+}
+
+function ProductReviews({ id }: { id: string }) {
+  const site = useSite();
+  const rs = useReviews(id);
+  if (!site.reviewsEnabled || !rs.length) return null;
+  return (
+    <div className="mt-6 space-y-3 border-t border-border pt-4 text-left">
+      <p className="text-sm font-semibold">Avaliações de clientes</p>
+      {rs.map((r) => (
+        <div key={r.id} className="rounded-xl bg-muted p-3 text-xs">
+          <div className="flex items-center justify-between"><span className="font-semibold">{r.name || "Cliente"}</span><Stars n={r.rating} /></div>
+          {r.body && <p className="mt-1">{r.body}</p>}
+          {r.photos.length > 0 && <div className="mt-2 flex gap-2">{r.photos.map((ph) => <a key={ph} href={ph} target="_blank" rel="noreferrer"><img src={ph} alt="" className="h-16 w-16 rounded-lg object-cover" /></a>)}</div>}
+          {r.reply && <p className="mt-2 rounded-lg bg-background p-2"><b>Resposta da loja:</b> {r.reply}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReviewSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [items, setItems] = useState<{ product_id: string; name: string }[] | null>(null);
+  const [sel, setSel] = useState<string>("");
+  const [rating, setRating] = useState(5);
+  const [body, setBody] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const input = "w-full rounded-xl border border-input bg-card px-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring";
+  useEffect(() => { if (!open) { setItems(null); setSel(""); setBody(""); setPhotos([]); setRating(5); setMsg(""); } }, [open]);
+  const find = async () => {
+    setBusy(true);
+    const { data } = await supabase.rpc("reviewable_products", { _phone: phone });
+    setBusy(false);
+    setItems((data ?? []) as { product_id: string; name: string }[]);
+  };
+  const submit = async () => {
+    setBusy(true);
+    const { error } = await supabase.rpc("submit_review", { _phone: phone, _product_id: sel, _rating: rating, _body: body, _photos: photos });
+    setBusy(false);
+    if (error) { setMsg("Não foi possível enviar. Tente novamente."); return; }
+    setMsg("Obrigada pela sua avaliação! 💚");
+    setItems((x) => (x ?? []).filter((i) => i.product_id !== sel)); setSel(""); setBody(""); setPhotos([]); setRating(5);
+  };
+  return (
+    <Overlay open={open} onClose={onClose} side="bottom">
+      <div className="space-y-4 p-6">
+        <h3 className="pr-10 text-2xl font-semibold">Avaliar minha compra</h3>
+        {msg && <p className="rounded-xl bg-primary/10 p-3 text-sm font-semibold text-primary">{msg}</p>}
+        {!items && (
+          <>
+            <p className="text-sm text-muted-foreground">Digite o WhatsApp que você usou no pedido. Você pode avaliar os produtos dos pedidos já entregues.</p>
+            <input className={input} type="tel" inputMode="tel" placeholder="(35) 9...." value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <button disabled={busy || phone.replace(/\D/g, "").length < 10} onClick={find} className="w-full rounded-full bg-primary py-3.5 font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Buscando…" : "Buscar minhas compras"}</button>
+          </>
+        )}
+        {items && !sel && (
+          items.length === 0
+            ? <p className="text-sm text-muted-foreground">Não encontramos produtos para avaliar com esse número. A avaliação fica disponível depois que o pedido é entregue.</p>
+            : <div className="space-y-2"><p className="text-sm font-semibold">Escolha o produto:</p>{items.map((i) => <button key={i.product_id} onClick={() => setSel(i.product_id)} className="w-full rounded-xl bg-muted p-3 text-left text-sm font-semibold">{i.name}</button>)}</div>
+        )}
+        {sel && (
+          <>
+            <p className="text-sm font-semibold">{items?.find((i) => i.product_id === sel)?.name}</p>
+            <div className="flex gap-1">{[1, 2, 3, 4, 5].map((n) => <button key={n} aria-label={`${n} estrelas`} onClick={() => setRating(n)}><Star className={`h-8 w-8 text-accent ${n <= rating ? "fill-current" : "opacity-30"}`} /></button>)}</div>
+            <textarea className={input} rows={3} placeholder="Conte o que achou do produto" value={body} onChange={(e) => setBody(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              {photos.map((ph) => <img key={ph} src={ph} alt="" className="h-16 w-16 rounded-lg object-cover" />)}
+              {photos.length < 4 && (
+                <label className="grid h-16 w-16 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border text-muted-foreground">
+                  <Camera className="h-5 w-5" />
+                  <input type="file" accept="image/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setBusy(true); try { const u = await uploadMedia(f, "reviews"); setPhotos((p) => [...p, u]); } catch { setMsg("Não foi possível enviar a foto."); } setBusy(false); }} />
+                </label>
+              )}
+            </div>
+            <button disabled={busy} onClick={submit} className="w-full rounded-full bg-primary py-3.5 font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Enviando…" : "Enviar avaliação"}</button>
+            <button onClick={() => setSel("")} className="w-full text-sm text-muted-foreground">Voltar</button>
+          </>
+        )}
+      </div>
+    </Overlay>
+  );
 }
 
 function WhatsIcon({ className }: { className?: string }) {
