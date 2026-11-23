@@ -6,10 +6,26 @@ import oleos from "@/assets/oleos.jpg";
 import skincare from "@/assets/skincare.jpg";
 import perfume from "@/assets/perfume.jpg";
 import banana from "@/assets/banana.jpg";
+import p_banana_locao from "@/assets/p-banana-locao.jpg";
+import p_banana_mascara from "@/assets/p-banana-mascara.jpg";
+import p_banana_sabonete from "@/assets/p-banana-sabonete.jpg";
+import p_lady_flora from "@/assets/p-lady-flora.jpg";
+import p_selvagem from "@/assets/p-selvagem.jpg";
+import p_jurema from "@/assets/p-jurema.jpg";
+import p_future from "@/assets/p-future.jpg";
+import p_serum from "@/assets/p-serum.jpg";
+import p_gloss from "@/assets/p-gloss.jpg";
+import p_kit_carnauba from "@/assets/p-kit-carnauba.jpg";
+import p_alecrim from "@/assets/p-alecrim.jpg";
+import p_eucalipto from "@/assets/p-eucalipto.jpg";
+import p_sabonete_vegano from "@/assets/p-sabonete-vegano.jpg";
+import p_hidratante_vegano from "@/assets/p-hidratante-vegano.jpg";
+import p_rosa_mosqueta from "@/assets/p-rosa-mosqueta.jpg";
+import p_tonico from "@/assets/p-tonico.jpg";
 import bananaVideo from "@/assets/banana.mp4.asset.json";
 import { ADDRESS, WHATSAPP, categories as staticCats, products as staticProducts, type Product } from "./store";
 
-const ASSETS: Record<string, string> = { hero, capilar, oleos, skincare, perfume, banana, bananaVideo: bananaVideo.url };
+const ASSETS: Record<string, string> = { "p-banana-locao": p_banana_locao, "p-banana-mascara": p_banana_mascara, "p-banana-sabonete": p_banana_sabonete, "p-lady-flora": p_lady_flora, "p-selvagem": p_selvagem, "p-jurema": p_jurema, "p-future": p_future, "p-serum": p_serum, "p-gloss": p_gloss, "p-kit-carnauba": p_kit_carnauba, "p-alecrim": p_alecrim, "p-eucalipto": p_eucalipto, "p-sabonete-vegano": p_sabonete_vegano, "p-hidratante-vegano": p_hidratante_vegano, "p-rosa-mosqueta": p_rosa_mosqueta, "p-tonico": p_tonico,  hero, capilar, oleos, skincare, perfume, banana, bananaVideo: bananaVideo.url };
 
 /** Resolves "asset:name" to bundled files; anything else is used as-is. */
 export const media = (src?: string | null) => {

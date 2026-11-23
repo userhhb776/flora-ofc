@@ -25,7 +25,7 @@ export const askAssistant = createServerFn({ method: "POST" })
     const sb = context.supabase;
     const { data: isAdmin } = await sb.rpc("has_role", { _user_id: context.userId, _role: "admin" });
     if (!isAdmin) throw new Error("Acesso negado");
-    const key = process.env["OLLAMA_API_KEY"];
+    const key = process.env["GROK_API_KEY"];
     if (!key) throw new Error("Assistente não configurado");
 
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
@@ -45,19 +45,19 @@ export const askAssistant = createServerFn({ method: "POST" })
       acessos_ultimos_30_dias: v.count ?? 0,
     };
 
-    const res = await fetch("https://ollama.com/api/chat", {
+    const res = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-oss:120b", stream: false,
+        model: "grok-4-fast-non-reasoning", stream: false,
         messages: [{ role: "system", content: `${SYSTEM}\n\nCONTEXTO ATUAL DA LOJA (JSON):\n${JSON.stringify(ctx)}` }, ...data.messages],
       }),
     });
     if (!res.ok) {
       const t = await res.text();
-      console.error("ollama", res.status, t);
+      console.error("grok", res.status, t);
       throw new Error(res.status === 401 ? "Chave do assistente inválida" : res.status === 429 ? "Muitos pedidos agora, tente em instantes" : "O assistente não respondeu, tente de novo");
     }
-    const j = (await res.json()) as { message?: { content?: string } };
-    return { reply: j.message?.content ?? "" };
+    const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    return { reply: j.choices?.[0]?.message?.content ?? "" };
   });
